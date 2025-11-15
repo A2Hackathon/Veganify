@@ -1,0 +1,51 @@
+{
+  "vegan": {
+    "label": "Vegan",
+    "description": "No animal products at all.",
+    "forbidden_tags": ["MEAT", "FISH", "DAIRY", "EGG", "HONEY", "SHELLFISH", "GELATIN"],
+    "impact_multiplier": 1.0
+  },
+  "vegetarian": {
+    "label": "Vegetarian",
+    "description": "No meat or fish, but may include dairy or eggs.",
+    "forbidden_tags": ["MEAT", "FISH", "SHELLFISH", "GELATIN"],
+    "impact_multiplier": 0.8
+  },
+  "pescatarian": {
+    "label": "Pescatarian",
+    "description": "No meat, but fish allowed. Dairy and eggs allowed.",
+    "forbidden_tags": ["MEAT", "SHELLFISH", "GELATIN"],
+    "impact_multiplier": 0.6
+  },
+  "ovo": {
+    "label": "Ovo-Vegetarian",
+    "description": "No meat or dairy, eggs allowed.",
+    "forbidden_tags": ["MEAT", "FISH", "DAIRY", "SHELLFISH", "GELATIN"],
+    "impact_multiplier": 0.7
+  },
+  "lacto": {
+    "label": "Lacto-Vegetarian",
+    "description": "No meat or eggs, dairy allowed.",
+    "forbidden_tags": ["MEAT", "FISH", "EGG", "SHELLFISH", "GELATIN"],
+    "impact_multiplier": 0.7
+  },
+  "lacto_ovo": {
+    "label": "Lacto-Ovo Vegetarian",
+    "description": "No meat or fish, dairy and eggs allowed.",
+    "forbidden_tags": ["MEAT", "FISH", "SHELLFISH", "GELATIN"],
+    "impact_multiplier": 0.75
+  },
+  "flexitarian": {
+    "label": "Flexitarian",
+    "description": "Mostly vegetarian but occasionally eats meat.",
+    "forbidden_tags": [],
+    "impact_multiplier": 0.5
+  },
+  "custom": {
+    "label": "Custom Diet",
+    "description": "User-defined dietary restrictions and allergies.",
+    "forbidden_tags": [],
+    "impact_multiplier": 1.0,
+    "allow_allergies": true
+  }
+}
