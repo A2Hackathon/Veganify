@@ -1,0 +1,117 @@
+{
+  "DAIRY": {
+    "vegan": ["almond milk", "soy milk", "oat milk", "coconut milk", "cashew milk", "vegan butter", "vegan cream cheese"],
+    "vegetarian": ["milk", "cheese", "butter", "cream"],
+    "pescatarian": ["milk", "cheese", "butter", "cream"]
+  },
+  "EGG": {
+    "vegan": ["flax egg (1 tbsp flax + 3 tbsp water)", "chia egg (1 tbsp chia + 3 tbsp water)", "applesauce 1/4 cup per egg", "mashed banana 1/4 cup per egg", "silken tofu 1/4 cup per egg"],
+    "vegetarian": ["egg"],
+    "pescatarian": ["egg"]
+  },
+  "CHEESE": {
+    "vegan": ["nutritional yeast", "vegan cheese", "cashew cheese", "almond cheese"],
+    "vegetarian": ["cheese"],
+    "pescatarian": ["cheese"]
+  },
+  "BUTTER": {
+    "vegan": ["vegan butter", "coconut oil", "olive oil", "margarine"],
+    "vegetarian": ["butter"],
+    "pescatarian": ["butter"]
+  },
+  "HONEY": {
+    "vegan": ["maple syrup", "agave nectar", "date syrup", "rice syrup"],
+    "vegetarian": ["honey"],
+    "pescatarian": ["honey"]
+  },
+  "MILK POWDER": {
+    "vegan": ["soy milk powder", "coconut milk powder", "oat milk powder"],
+    "vegetarian": ["milk powder"],
+    "pescatarian": ["milk powder"]
+  },
+  "CREAM": {
+    "vegan": ["coconut cream", "soy cream", "cashew cream"],
+    "vegetarian": ["cream"],
+    "pescatarian": ["cream"]
+  },
+  "CHICKEN": {
+    "vegan": ["tofu", "tempeh", "seitan", "jackfruit", "mushrooms"],
+    "vegetarian": ["tofu", "tempeh", "seitan", "mushrooms"],
+    "pescatarian": ["fish", "shrimp", "tofu"]
+  },
+  "BEEF": {
+    "vegan": ["tempeh", "seitan", "jackfruit", "mushrooms", "lentils"],
+    "vegetarian": ["tempeh", "seitan", "mushrooms", "lentils"],
+    "pescatarian": ["fish", "shrimp", "tofu"]
+  },
+  "PORK": {
+    "vegan": ["tempeh", "seitan", "jackfruit", "mushrooms", "tofu"],
+    "vegetarian": ["tempeh", "seitan", "mushrooms", "tofu"],
+    "pescatarian": ["fish", "shrimp", "tofu"]
+  },
+  "LAMB": {
+    "vegan": ["tempeh", "seitan", "mushrooms", "jackfruit"],
+    "vegetarian": ["tempeh", "seitan", "mushrooms"],
+    "pescatarian": ["fish", "shrimp"]
+  },
+  "FISH": {
+    "vegan": ["tofu", "tempeh", "jackfruit", "hearts of palm"],
+    "vegetarian": ["fish"],
+    "pescatarian": ["fish"]
+  },
+  "SHELLFISH": {
+    "vegan": ["tofu", "tempeh", "mushrooms", "jackfruit"],
+    "vegetarian": ["mushrooms", "tofu"],
+    "pescatarian": ["fish", "shrimp", "tofu"]
+  },
+  "GELATIN": {
+    "vegan": ["agar agar", "pectin", "carrageenan", "konjac powder"],
+    "vegetarian": ["gelatin alternatives"],
+    "pescatarian": ["gelatin alternatives"]
+  },
+  "YOGURT": {
+    "vegan": ["soy yogurt", "coconut yogurt", "almond yogurt"],
+    "vegetarian": ["yogurt"],
+    "pescatarian": ["yogurt"]
+  },
+  "ICE CREAM": {
+    "vegan": ["coconut milk ice cream", "soy ice cream", "almond ice cream"],
+    "vegetarian": ["ice cream"],
+    "pescatarian": ["ice cream"]
+  },
+  "SAUSAGE": {
+    "vegan": ["vegan sausage", "tempeh sausage", "seitan sausage"],
+    "vegetarian": ["vegetarian sausage", "tempeh sausage"],
+    "pescatarian": ["fish sausage", "shrimp sausage"]
+  },
+  "BACON": {
+    "vegan": ["tempeh bacon", "coconut bacon", "mushroom bacon"],
+    "vegetarian": ["vegetarian bacon", "tempeh bacon"],
+    "pescatarian": ["fish bacon"]
+  },
+  "MEATBALL": {
+    "vegan": ["lentil balls", "tempeh balls", "seitan balls"],
+    "vegetarian": ["vegetarian meatballs"],
+    "pescatarian": ["fish balls", "shrimp balls"]
+  },
+  "FISH SAUCE": {
+    "vegan": ["soy sauce", "tamari", "coconut aminos"],
+    "vegetarian": ["fish sauce"],
+    "pescatarian": ["fish sauce"]
+  },
+  "ANCHOVY": {
+    "vegan": ["capers", "seaweed", "olives"],
+    "vegetarian": ["anchovy"],
+    "pescatarian": ["anchovy"]
+  },
+  "MILK CHOCOLATE": {
+    "vegan": ["dark chocolate", "vegan chocolate"],
+    "vegetarian": ["milk chocolate"],
+    "pescatarian": ["milk chocolate"]
+  },
+  "WHEY": {
+    "vegan": ["pea protein", "soy protein", "rice protein"],
+    "vegetarian": ["whey"],
+    "pescatarian": ["whey"]
+  }
+}
