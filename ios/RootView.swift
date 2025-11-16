@@ -5,45 +5,35 @@ import SwiftUI
 struct RootView: View {
     @StateObject private var vm = SproutViewModel()
     @State private var selectedTab: SproutTab = .home
-    @State private var showOnboarding = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("darkModeEnabled") private var darkModeEnabled = false
     
     var body: some View {
         Group {
             if !hasCompletedOnboarding {
+                // Onboarding flow
                 OnboardingView()
-                    .onAppear {
-                        Task {
-                            await vm.loadProfile()
-                            if vm.userProfile != nil {
-                                hasCompletedOnboarding = true
-                            }
-                        }
-                    }
             } else {
+                // Main app tabs
                 TabView(selection: $selectedTab) {
                     HomeView()
-                        .environmentObject(vm)
                         .tabItem {
                             Image(systemName: "house.fill")
                             Text("Home")
                         }
                         .tag(SproutTab.home)
                     
-                    // Pass userId to ScanView
+                    // Only show Scan tab if we have a userId
                     if let userId = vm.userProfile?._id {
                         ScanView(userId: userId)
-                            .environmentObject(vm)
                             .tabItem {
                                 Image(systemName: "camera.viewfinder")
                                 Text("Scan")
                             }
                             .tag(SproutTab.scan)
                     }
-
+                    
                     CookView()
-                        .environmentObject(vm)
                         .tabItem {
                             Image(systemName: "fork.knife")
                             Text("Cook")
@@ -51,30 +41,32 @@ struct RootView: View {
                         .tag(SproutTab.cook)
                     
                     SettingsView()
-                        .environmentObject(vm)
                         .tabItem {
                             Image(systemName: "gearshape.fill")
                             Text("Settings")
                         }
                         .tag(SproutTab.settings)
                 }
-                .accentColor(.sproutGreen)
-                .preferredColorScheme(darkModeEnabled ? .dark : .light)
-                .onAppear {
-                    Task {
-                        await vm.loadProfile()
-                        await vm.loadHomeData()
-                        await vm.loadGroceryList()
-                        await vm.loadSavedRecipes()
-                    }
-                }
             }
         }
-       .onChange(of: vm.userProfile != nil) { hasProfile in
-    if hasProfile && !hasCompletedOnboarding {
-        hasCompletedOnboarding = true
-    }
-}
-
+        // One place to inject the view model
+        .environmentObject(vm)
+        .accentColor(.sproutGreen)
+        .preferredColorScheme(darkModeEnabled ? .dark : .light)
+        // Single async startup task
+        .task {
+            // Load profile first
+            await vm.loadProfile()
+            
+            // If a profile already exists, skip onboarding
+            if vm.userProfile != nil {
+                hasCompletedOnboarding = true
+            }
+            
+            // Then load home + cook data
+            await vm.loadHomeData()
+            await vm.loadGroceryList()
+            await vm.loadSavedRecipes()
+        }
     }
 }
