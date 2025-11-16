@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI;
+const MONGO_URI = "mongodb+srv://foreverarmy06_db_user:hwPZoEnjUAdJc5dR@cluster0.mnr1o3e.mongodb.net/sprout?retryWrites=true&w=majority&appName=Cluster0";
 
 if (!MONGO_URI) {
   console.error("❌ MONGO_URI is not defined in .env file");
