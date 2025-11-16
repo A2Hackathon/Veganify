@@ -70,10 +70,11 @@ struct RootView: View {
                 }
             }
         }
-        .onChange(of: vm.userProfile) { profile in
-            if profile != nil && !hasCompletedOnboarding {
-                hasCompletedOnboarding = true
-            }
-        }
+       .onChange(of: vm.userProfile != nil) { hasProfile in
+    if hasProfile && !hasCompletedOnboarding {
+        hasCompletedOnboarding = true
+    }
+}
+
     }
 }
