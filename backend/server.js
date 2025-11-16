@@ -3,6 +3,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import os from "os";
 // Initialize JSON storage (replaces MongoDB)
 import "./utils/jsonStorage.js";
 
@@ -83,6 +84,27 @@ try {
   server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`✅ Server listening on http://localhost:${PORT}`);
     console.log(`✅ Server also accessible on http://127.0.0.1:${PORT}`);
+    
+    // Get network IP address for cross-platform connections
+    const networkInterfaces = os.networkInterfaces();
+    let networkIP = null;
+    for (const interfaceName in networkInterfaces) {
+      const interfaces = networkInterfaces[interfaceName];
+      for (const iface of interfaces) {
+        // Skip internal (loopback) and non-IPv4 addresses
+        if (iface.family === "IPv4" && !iface.internal) {
+          networkIP = iface.address;
+          break;
+        }
+      }
+      if (networkIP) break;
+    }
+    
+    if (networkIP) {
+      console.log(`🌐 Server accessible from other devices on network: http://${networkIP}:${PORT}`);
+      console.log(`   → Use this IP in your iOS app's APIClient.swift`);
+    }
+    
     console.log(`✅ Server ready to accept connections!`);
     console.log(`🌐 Test in browser: http://localhost:${PORT}`);
   });

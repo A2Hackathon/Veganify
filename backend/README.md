@@ -53,6 +53,19 @@ All data is stored in JSON files in the `backend/data/` folder:
 
 - The server must be running for your iOS app to work
 - The server runs on port 4000 by default
-- If using iOS Simulator: use `http://localhost:4000`
-- If using physical device: use your computer's IP address (e.g., `http://192.168.1.XXX:4000`)
+- **Cross-Platform Setup**: If your iOS app runs on a MacBook and the server runs on a Windows laptop:
+  - The Windows laptop must run `npm start` in the backend folder
+  - The MacBook iOS app must connect to the Windows laptop's IP address
+  - Find the Windows laptop's IP: Run `ipconfig` on Windows, look for "IPv4 Address" under "Wi-Fi" or "Ethernet"
+  - Update `ios/APIClient.swift` to use `http://[WINDOWS_IP]:4000` (e.g., `http://10.5.174.193:4000`)
+- If using iOS Simulator on MacBook: use the Windows laptop's IP address (e.g., `http://10.5.174.193:4000`)
+- If using physical iOS device: use the Windows laptop's IP address (e.g., `http://10.5.174.193:4000`)
+
+## Multi-Developer Setup
+
+Each developer needs to:
+1. Run `npm start` on their own Windows laptop (where the server will run)
+2. Find their Windows laptop's IP address using `ipconfig`
+3. Update `ios/APIClient.swift` with their Windows laptop's IP address
+4. Make sure both the Windows laptop and MacBook are on the same network (Wi-Fi)
 
