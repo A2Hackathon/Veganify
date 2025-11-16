@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct SproutApp: App {
     @StateObject private var viewModel = SproutViewModel()
-    @State private var hasCompletedOnboarding = false
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     
     var body: some Scene {
         WindowGroup {

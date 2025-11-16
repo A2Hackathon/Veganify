@@ -1,0 +1,369 @@
+import SwiftUI
+
+// MARK: - Preference Editor Views
+
+struct DietaryRestrictionsEditorView: View {
+    @EnvironmentObject var vm: SproutViewModel
+    @Environment(\.dismiss) var dismiss
+    @State private var selectedRestrictions: [String] = []
+    @State private var freeText: String = ""
+    @State private var isParsing: Bool = false
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color.sproutBackground, Color(.systemBackground)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Predefined chips
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Common Restrictions")
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .foregroundColor(.sproutGreenDark)
+                            .padding(.horizontal, 20)
+                        
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 120))], spacing: 12) {
+                            ForEach(DietaryRestrictionChip.allCases) { chip in
+                                DietaryRestrictionChipView(
+                                    chip: chip,
+                                    isSelected: selectedRestrictions.contains(chip.rawValue)
+                                ) {
+                                    if selectedRestrictions.contains(chip.rawValue) {
+                                        selectedRestrictions.removeAll { $0 == chip.rawValue }
+                                    } else {
+                                        selectedRestrictions.append(chip.rawValue)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                    
+                    // Free text input
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Or describe your restrictions")
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .foregroundColor(.sproutGreenDark)
+                            .padding(.horizontal, 20)
+                        
+                        HStack(spacing: 12) {
+                            TextField("e.g., allergic to peanuts", text: $freeText, axis: .vertical)
+                                .textFieldStyle(.roundedBorder)
+                                .lineLimit(3...6)
+                            
+                            Button {
+                                parseFreeText()
+                            } label: {
+                                if isParsing {
+                                    ProgressView()
+                                        .progressViewStyle(.circular)
+                                        .tint(.sproutGreen)
+                                } else {
+                                    Image(systemName: "sparkles")
+                                        .font(.title3)
+                                        .foregroundColor(.sproutGreen)
+                                }
+                            }
+                            .disabled(freeText.isEmpty || isParsing)
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                    
+                    Button {
+                        saveRestrictions()
+                    } label: {
+                        Text("Save")
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.sproutGreen, Color.sproutGreenDark],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(16)
+                    }
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 40)
+                }
+                .padding(.top, 20)
+            }
+        }
+        .onAppear {
+            selectedRestrictions = vm.userProfile?.dietaryRestrictions ?? []
+        }
+        .navigationTitle("Dietary Restrictions")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private func parseFreeText() {
+        guard !freeText.isEmpty, let userId = vm.userProfile?.id else { return }
+        isParsing = true
+        
+        Task {
+            do {
+                let response = try await APIClient.shared.parseDietaryRestrictions(
+                    text: freeText,
+                    userId: userId
+                )
+                
+                await MainActor.run {
+                    for restriction in response.restrictions {
+                        if !selectedRestrictions.contains(restriction) {
+                            selectedRestrictions.append(restriction)
+                        }
+                    }
+                    freeText = ""
+                    isParsing = false
+                }
+            } catch {
+                await MainActor.run {
+                    isParsing = false
+                    if !selectedRestrictions.contains(freeText) {
+                        selectedRestrictions.append(freeText)
+                    }
+                    freeText = ""
+                }
+            }
+        }
+    }
+    
+    private func saveRestrictions() {
+        Task {
+            if var profile = vm.userProfile {
+                profile.dietaryRestrictions = selectedRestrictions
+                await vm.updateProfile(profile)
+            }
+            dismiss()
+        }
+    }
+}
+
+struct CuisinePreferencesEditorView: View {
+    @EnvironmentObject var vm: SproutViewModel
+    @Environment(\.dismiss) var dismiss
+    @State private var selectedCuisines: [String] = []
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color.sproutBackground, Color(.systemBackground)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 140))], spacing: 16) {
+                        ForEach(CuisineOption.allCases) { cuisine in
+                            CuisineCard(
+                                cuisine: cuisine,
+                                isSelected: selectedCuisines.contains(cuisine.rawValue)
+                            ) {
+                                if selectedCuisines.contains(cuisine.rawValue) {
+                                    selectedCuisines.removeAll { $0 == cuisine.rawValue }
+                                } else {
+                                    selectedCuisines.append(cuisine.rawValue)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    
+                    Button {
+                        saveCuisines()
+                    } label: {
+                        Text("Save")
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.sproutGreen, Color.sproutGreenDark],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(16)
+                    }
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 40)
+                }
+            }
+        }
+        .onAppear {
+            selectedCuisines = vm.userProfile?.cuisinePreferences ?? []
+        }
+        .navigationTitle("Cuisine Preferences")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private func saveCuisines() {
+        Task {
+            if var profile = vm.userProfile {
+                profile.cuisinePreferences = selectedCuisines
+                await vm.updateProfile(profile)
+            }
+            dismiss()
+        }
+    }
+}
+
+struct CookingStyleEditorView: View {
+    @EnvironmentObject var vm: SproutViewModel
+    @Environment(\.dismiss) var dismiss
+    @State private var selectedStyles: [String] = []
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color.sproutBackground, Color(.systemBackground)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 160))], spacing: 16) {
+                        ForEach(CookingStyleOption.allCases) { style in
+                            CookingStyleCard(
+                                style: style,
+                                isSelected: selectedStyles.contains(style.rawValue)
+                            ) {
+                                if selectedStyles.contains(style.rawValue) {
+                                    selectedStyles.removeAll { $0 == style.rawValue }
+                                } else {
+                                    selectedStyles.append(style.rawValue)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    
+                    Button {
+                        saveStyles()
+                    } label: {
+                        Text("Save")
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.sproutGreen, Color.sproutGreenDark],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(16)
+                    }
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 40)
+                }
+            }
+        }
+        .onAppear {
+            selectedStyles = vm.userProfile?.cookingStylePreferences ?? []
+        }
+        .navigationTitle("Cooking Style")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private func saveStyles() {
+        Task {
+            if var profile = vm.userProfile {
+                profile.cookingStylePreferences = selectedStyles
+                await vm.updateProfile(profile)
+            }
+            dismiss()
+        }
+    }
+}
+
+struct EatingStyleEditorView: View {
+    @EnvironmentObject var vm: SproutViewModel
+    @Environment(\.dismiss) var dismiss
+    @State private var selectedStyle: EatingStyle?
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color.sproutBackground, Color(.systemBackground)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    VStack(spacing: 16) {
+                        ForEach(EatingStyle.allCases) { style in
+                            EatingStyleCard(
+                                style: style,
+                                isSelected: selectedStyle == style
+                            ) {
+                                selectedStyle = style
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    
+                    Button {
+                        saveStyle()
+                    } label: {
+                        Text("Save")
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.sproutGreen, Color.sproutGreenDark],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(16)
+                    }
+                    .disabled(selectedStyle == nil)
+                    .padding(.horizontal, 32)
+                    .padding(.bottom, 40)
+                }
+            }
+        }
+        .onAppear {
+            if let styleString = vm.userProfile?.eatingStyle,
+               let style = EatingStyle.allCases.first(where: { $0.rawValue == styleString }) {
+                selectedStyle = style
+            }
+        }
+        .navigationTitle("Eating Style")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private func saveStyle() {
+        guard let style = selectedStyle else { return }
+        Task {
+            if var profile = vm.userProfile {
+                profile.eatingStyle = style.rawValue
+                await vm.updateProfile(profile)
+            }
+            dismiss()
+        }
+    }
+}
+

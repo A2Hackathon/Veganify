@@ -38,8 +38,8 @@ router.get("/", async (req, res) => {
       eatingStyle: user.dietLevel || "vegan",
       dietaryRestrictions: user.extraForbiddenTags || [],
       cuisinePreferences: user.preferredCuisines || [],
-      cookingStylePreferences: [], // Not in User model yet
-      sproutName: "Bud", // Default, can be added to User model later
+      cookingStylePreferences: user.cookingStylePreferences || [],
+      sproutName: user.sproutName || "Bud",
       level: level,
       xp: impact.xp || 0,
       xpToNextLevel: xpToNextLevel,
@@ -73,6 +73,8 @@ router.patch("/", async (req, res) => {
     if (eatingStyle !== undefined) user.dietLevel = eatingStyle;
     if (dietaryRestrictions !== undefined) user.extraForbiddenTags = dietaryRestrictions;
     if (cuisinePreferences !== undefined) user.preferredCuisines = cuisinePreferences;
+    if (cookingStylePreferences !== undefined) user.cookingStylePreferences = cookingStylePreferences;
+    if (sproutName !== undefined) user.sproutName = sproutName;
 
     await user.save();
 
@@ -92,8 +94,8 @@ router.patch("/", async (req, res) => {
       eatingStyle: user.dietLevel || "vegan",
       dietaryRestrictions: user.extraForbiddenTags || [],
       cuisinePreferences: user.preferredCuisines || [],
-      cookingStylePreferences: cookingStylePreferences || [],
-      sproutName: sproutName || "Bud",
+      cookingStylePreferences: user.cookingStylePreferences || [],
+      sproutName: user.sproutName || "Bud",
       level: level,
       xp: impact.xp || 0,
       xpToNextLevel: xpToNextLevel,

@@ -357,6 +357,25 @@ class APIClient {
         return response.adaptedRecipe.text
     }
     
+    // MARK: - AI Chat
+    
+    struct ChatResponse: Codable {
+        let answer: String
+    }
+    
+    func sendChatMessage(userId: String, question: String) async throws -> ChatResponse {
+        struct Request: Encodable {
+            let user_id: String
+            let question: String
+        }
+        
+        return try await request(
+            endpoint: "/ai/ask",
+            method: "POST",
+            body: Request(user_id: userId, question: question)
+        )
+    }
+    
     // MARK: - Dietary Restrictions Parsing
     
     struct ParseRestrictionsResponse: Codable {

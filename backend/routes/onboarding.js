@@ -18,7 +18,9 @@ router.post("/profile", async (req, res) => {
       name: "User",
       dietLevel: eatingStyle,
       extraForbiddenTags: dietaryRestrictions || [],
-      preferredCuisines: cuisinePreferences || []
+      preferredCuisines: cuisinePreferences || [],
+      cookingStylePreferences: cookingStylePreferences || [],
+      sproutName: sproutName || "Bud"
     });
 
     // Create initial UserImpact

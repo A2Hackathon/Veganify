@@ -17,6 +17,14 @@ const userSchema = new mongoose.Schema({
         type: [String], 
         default: []
     },
+    cookingStylePreferences: {
+        type: [String],
+        default: []
+    },
+    sproutName: {
+        type: String,
+        default: "Bud"
+    },
     createdAt: {
         type: Date,
         default: Date.now

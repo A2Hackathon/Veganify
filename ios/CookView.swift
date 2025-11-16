@@ -85,11 +85,12 @@ struct CookView: View {
                                 let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
                                 if !text.isEmpty {
                                     vm.addUserChat(text)
+                                    let messageText = text // Save before clearing
                                     inputText = ""
                                     
-                                    // Check if this looks like a recipe request
+                                    // Send to AI chat
                                     Task {
-                                        await vm.veganizeRecipe(inputText: text)
+                                        await vm.sendChatMessage(messageText)
                                     }
                                 }
                             } label: {

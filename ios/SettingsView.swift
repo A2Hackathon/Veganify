@@ -18,32 +18,32 @@ struct SettingsView: View {
                 List {
                     Section {
                         NavigationLink {
-                            Text("Eating Style Editor Placeholder")
-                                .navigationTitle("Eating Style")
+                            EatingStyleEditorView()
+                                .environmentObject(vm)
                         } label: {
                             Label("Eating Style (Vegan Level)", systemImage: "leaf.fill")
                                 .foregroundColor(.sproutGreen)
                         }
                         
                         NavigationLink {
-                            Text("Dietary Restrictions Editor Placeholder")
-                                .navigationTitle("Dietary Restrictions")
+                            DietaryRestrictionsEditorView()
+                                .environmentObject(vm)
                         } label: {
                             Label("Dietary Restrictions", systemImage: "exclamationmark.shield.fill")
                                 .foregroundColor(.sproutGreen)
                         }
                         
                         NavigationLink {
-                            Text("Cuisine Preferences Editor Placeholder")
-                                .navigationTitle("Cuisine Preferences")
+                            CuisinePreferencesEditorView()
+                                .environmentObject(vm)
                         } label: {
                             Label("Cuisine Preferences", systemImage: "globe.asia.australia.fill")
                                 .foregroundColor(.sproutGreen)
                         }
                         
                         NavigationLink {
-                            Text("Cooking Style Preferences Editor Placeholder")
-                                .navigationTitle("Cooking Style")
+                            CookingStyleEditorView()
+                                .environmentObject(vm)
                         } label: {
                             Label("Cooking Style Preferences", systemImage: "flame.fill")
                                 .foregroundColor(.sproutGreen)

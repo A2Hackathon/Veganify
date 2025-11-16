@@ -478,7 +478,7 @@ struct CuisinePreferencesStep: View {
                 
                 Button {
                     withAnimation {
-                        currentStep = 4
+                        currentStep = 5
                     }
                 } label: {
                     Text("Continue")
@@ -736,10 +736,21 @@ struct ReviewStep: View {
         }
         
         Task {
-            await viewModel.completeOnboarding()
-            await MainActor.run {
-                // Onboarding completion is handled by RootView via @AppStorage
-                UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+            do {
+                await viewModel.completeOnboarding()
+                // Only mark as completed if profile was successfully created
+                if viewModel.isCompleted {
+                    await MainActor.run {
+                        // This will trigger @AppStorage to update in SproutApp and RootView
+                        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+                    }
+                }
+            } catch {
+                print("Error completing onboarding: \(error)")
+                // Still mark as completed even if there's an error (offline mode)
+                await MainActor.run {
+                    UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+                }
             }
         }
     }

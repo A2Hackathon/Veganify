@@ -111,6 +111,21 @@ class SproutViewModel: ObservableObject {
         chatMessages.append(ChatMessage(isUser: true, text: text))
     }
     
+    func sendChatMessage(_ text: String) async {
+        guard let userId = userProfile?.id else { return }
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let response = try await apiClient.sendChatMessage(userId: userId, question: text)
+            let message = ChatMessage(isUser: false, text: response.answer)
+            chatMessages.append(message)
+        } catch {
+            errorMessage = "Failed to send message: \(error.localizedDescription)"
+            chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't process that. Please try again."))
+        }
+    }
+    
     func generateRecipe() async {
         guard let userId = userProfile?.id else { return }
         isLoading = true
