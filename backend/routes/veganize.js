@@ -2,15 +2,14 @@ import express from "express";
 import User from "../models/User.js";
 import Recipe from "../models/Recipe.js";
 import { extractIngredients, rewriteRecipeSteps, isAllowedForUser } from "../utils/llmClient.js";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const router = express.Router();
-
-function mapStatus(s) {
-  const v = (s || "").toLowerCase();
-  if (v.includes("not")) return "not_allowed";
-  if (v.includes("ambig")) return "ambiguous";
-  return "allowed";
-}
 
 // POST /veganize/analyze
 router.post("/analyze", async (req, res) => {
@@ -34,16 +33,30 @@ router.post("/analyze", async (req, res) => {
 
     const checks = await isAllowedForUser(prefs, ingredients);
 
+    // Load substitutions config for suggestions
+    const substitutions = JSON.parse(readFileSync(join(__dirname, "../config/substitutions.json"), "utf-8"));
+    const dietLevel = user.dietLevel?.toLowerCase() || "vegan";
+
     const problematic = checks
       .filter((c) => c.allowed !== "Allowed")
-      .map((c) => ({
-        name: c.ingredient,
-        status: mapStatus(c.allowed),
-        reason: c.reason || "",
-        suggestions: c.suggestions || [],
-      }));
+      .map((c) => {
+        // Get suggestions from substitutions config
+        const ingredientKey = c.ingredient.toUpperCase();
+        let suggestions = c.suggestions || [];
+        
+        // If no suggestions from LLM, try to get from substitutions config
+        if (suggestions.length === 0 && substitutions[ingredientKey]?.[dietLevel]) {
+          suggestions = substitutions[ingredientKey][dietLevel];
+        }
+        
+        return {
+          original: c.ingredient,
+          suggestions: suggestions,
+        };
+      });
 
     res.json({
+      success: true,
       violatesCount: problematic.length,
       problematicIngredients: problematic,
     });
@@ -56,9 +69,9 @@ router.post("/analyze", async (req, res) => {
 // POST /veganize/commit
 router.post("/commit", async (req, res) => {
   try {
-    const { userId, userID, recipeText, recipe, substitutions, chosenSubs, originalPrompt } = req.body;
+    const { userId, userID, recipeText, recipe: recipeParam, substitutions, chosenSubs, originalPrompt } = req.body;
     const actualUserId = userId || userID; // Support both userId and userID
-    const recipeContent = recipeText || recipe?.text || recipe; // Support recipeText, recipe.text, or recipe
+    const recipeContent = recipeText || recipeParam?.text || recipeParam; // Support recipeText, recipe.text, or recipe
     const subs = substitutions || chosenSubs; // Support both parameter names
     
     if (!recipeContent || !Array.isArray(subs)) {
@@ -89,7 +102,7 @@ router.post("/commit", async (req, res) => {
       }
     });
 
-    const recipe = await Recipe.create({
+    const savedRecipe = await Recipe.create({
       userId: actualUserId || null,
       title: "Veganized Recipe",
       tags: ["veganized"],
@@ -103,17 +116,17 @@ router.post("/commit", async (req, res) => {
     });
 
     const adaptedRecipe = {
-      id: recipe._id.toString(),
-      userId: recipe.userId?.toString() || null,
-      title: recipe.title,
-      tags: recipe.tags,
-      duration: recipe.duration,
-      ingredients: recipe.ingredients,
-      steps: recipe.steps,
-      previewImageUrl: recipe.previewImageUrl,
-      originalPrompt: recipe.originalPrompt,
-      type: recipe.type,
-      substitutionMap: recipe.substitutionMap,
+      id: savedRecipe._id.toString(),
+      userId: savedRecipe.userId?.toString() || null,
+      title: savedRecipe.title,
+      tags: savedRecipe.tags,
+      duration: savedRecipe.duration,
+      ingredients: savedRecipe.ingredients,
+      steps: savedRecipe.steps,
+      previewImageUrl: savedRecipe.previewImageUrl,
+      originalPrompt: savedRecipe.originalPrompt,
+      type: savedRecipe.type,
+      substitutionMap: savedRecipe.substitutionMap,
     };
 
     res.json({ adaptedRecipe });
