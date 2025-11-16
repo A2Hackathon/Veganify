@@ -1,83 +1,80 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const Tesseract = require('tesseract.js');
 
-const menuParser = require('../utils/menuParser');       
-const isAllowedForUser = require('../utils/isAllowedForUser');  
-const Ingredient = require('../models/Ingredient');     
-const User = require('../models/User');                 
+const menuParser = require('../utils/menuParser');
+const Ingredient = require('../models/Ingredient');
+const User = require('../models/User');
+const {rewriteRecipeSteps,
+    extractIngredients,
+    isAllowedForUser} = require('../utils/llmClient');
 
-// POST /scan/menu
-router.post('/', async (req, res) => {
+const upload = multer({ dest: 'uploads/' }); // temp folder for uploaded images
+
+
+router.post('/', upload.single('image'), async (req, res) => {
     try {
-        const { userId, menuText } = req.body;
+        const { userID, menuText, dietLevel, extraForbiddenTags = [] } = req.body;
 
-        // Check for required input
-        if (!menuText) {
-            return res.status(400).json({
-                success: false,
-                error: "menuText is required"
+        let textToParse = menuText;
+
+        // OCR
+        if (req.file) {
+            const imagePath = req.file.path;
+            try {
+                const ocrResult = await Tesseract.recognize(imagePath, 'eng');
+                textToParse = ocrResult.data.text;
+            } catch (ocrErr) {
+                console.error('OCR failed:', ocrErr);
+                return res.status(500).json({ success: false, error: "OCR failed" });
+            } 
+        }
+
+        if (!textToParse) {
+            return res.status(400).json({ success: false, error: "No menu text found" });
+        }
+
+        // Load user preferences
+        let userPrefs = { dietLevel, extraForbiddenTags };
+        const user = await User.findById(userID);
+        
+        userPrefs = {
+                    dietLevel: user.dietLevel,
+                    extraForbiddenTags: user.extraForbiddenTags || [],
+                };
+            
+        
+
+        // Parse menu text into dishes + ingredients
+        const parsedMenu = menuParser(textToParse);
+        const ingredientDetails = [];
+
+        for (const item of parsedMenu) {
+
+            for (const ingredient of item.ingredients) {
+
+                const check = isAllowedForUser(userPrefs, tags);
+
+                ingredientDetails.push({
+                    ingredient: ingredient,
+                    allowed: check.allowed,
+                    reasons: check.reasons,
+                });
+            }
+
+            results.push({
+                item: item.name,
+                ingredients: ingredientDetails,
+                compatible: ingredientDetails.every(i => i.allowed)
             });
         }
 
-        // Get user dietary restrictions if provided
-        let user = null;
-        if (userId) {
-            user = await User.findById(userId);
-            if (!user) {
-                return res.status(404).json({
-                    success: false,
-                    error: "User not found"
-                });
-            }
-        }
-
-        // Parse the raw menu text into an array of dishes
-        const parsedMenu = menuParser(menuText); 
-
-        const results = [];
-
-        for (const item of parsedMenu) {
-            const ingredientDetails = [];
-
-            for (const ing of item.ingredients) {
-                // Look up ingredient in DB
-                let dbIng = await Ingredient.findOne({ name: new RegExp(`^${ing}$`, 'i') });
-
-                let allowed = true;
-                if (user) {
-                    allowed = isAllowedForUser(user.dietLevel, ing);
-                }
-
-                ingredientDetails.push({
-                    ingredient: ing,
-                    allowed,
-                    info: dbIng || null
-                });
-            }
-
-            const menuItemResult = {
-                item: item.name,
-                ingredients: ingredientDetails,
-                compatible: ingredientDetails.every(function(ingredientObject) {
-                    return ingredientObject.allowed;
-                })
-            };
-
-            results.push(menuItemResult);
-        }
-
-        // Return the processed results
-        res.json({
-            success: true,
-            items: results
-        });
+        res.json({ success: true, items: results });
 
     } catch (err) {
         console.error("Error scanning menu:", err);
-        res.status(500).json({
-            success: false,
-            error: "Internal server error"
-        });
+        res.status(500).json({ success: false, error: "Internal server error" });
     }
 });
 
