@@ -38,16 +38,60 @@ class SproutViewModel: ObservableObject {
         defer { isLoading = false }
         
         // Try to get userId from UserDefaults first (saved during onboarding)
-        guard let userId = UserDefaults.standard.string(forKey: "currentUserId") ?? userProfile?.id else {
-            errorMessage = "No user ID found. Please complete onboarding."
-            return
+        if let userId = UserDefaults.standard.string(forKey: "currentUserId") ?? userProfile?.id {
+            // Profile exists, load it
+            do {
+                userProfile = try await apiClient.getProfile(userId: userId)
+                await loadHomeData()
+            } catch {
+                errorMessage = "Failed to load profile: \(error.localizedDescription)"
+            }
+        } else {
+            // No profile exists, create a default one
+            print("🌱 No profile found. Creating default profile...")
+            await createDefaultProfile()
         }
+    }
+    
+    private func createDefaultProfile() async {
+        // Create default vegan profile
+        let defaultProfile = UserProfile(
+            id: "", // Backend will assign the real ID
+            userName: "User",
+            eatingStyle: EatingStyle.vegan.rawValue,
+            dietaryRestrictions: [],
+            cuisinePreferences: [],
+            cookingStylePreferences: [],
+            sproutName: "Bud",
+            level: 1,
+            xp: 0,
+            xpToNextLevel: 100,
+            coins: 0,
+            streakDays: 0
+        )
         
         do {
-            userProfile = try await apiClient.getProfile(userId: userId)
+            print("🌱 Creating default profile in MongoDB...")
+            let createdProfile = try await apiClient.createProfile(defaultProfile)
+            print("✅ Default profile created with ID: \(createdProfile.id)")
+            
+            // Save userId to UserDefaults
+            UserDefaults.standard.set(createdProfile.id, forKey: "currentUserId")
+            print("💾 Saved userId to UserDefaults: \(createdProfile.id)")
+            
+            // Set the profile in viewModel
+            await MainActor.run {
+                userProfile = createdProfile
+            }
+            
+            // Mark onboarding as completed since we have a profile
+            UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+            
+            // Load home data
             await loadHomeData()
         } catch {
-            errorMessage = "Failed to load profile: \(error.localizedDescription)"
+            print("❌ Error creating default profile: \(error)")
+            errorMessage = "Failed to create profile: \(error.localizedDescription)"
         }
     }
     

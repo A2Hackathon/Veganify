@@ -59,18 +59,20 @@ struct RootView: View {
         .preferredColorScheme(darkModeEnabled ? .dark : .light)
         // Single async startup task
         .task {
-            // Load profile first
-            await vm.loadProfile()
-            
-            // If a profile already exists, skip onboarding
+            // Profile loading is handled in SproutApp
+            // Just load additional data if profile exists
             if vm.userProfile != nil {
                 hasCompletedOnboarding = true
+                await vm.loadHomeData()
+                await vm.loadGroceryList()
+                await vm.loadSavedRecipes()
             }
-            
-            // Then load home + cook data
-            await vm.loadHomeData()
-            await vm.loadGroceryList()
-            await vm.loadSavedRecipes()
+        }
+        .onChange(of: vm.userProfile) { newProfile in
+            // Update onboarding status when profile is loaded/created
+            if newProfile != nil {
+                hasCompletedOnboarding = true
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OnboardingCompleted"))) { _ in
             // Force refresh when onboarding completes

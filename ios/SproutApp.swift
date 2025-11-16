@@ -8,25 +8,13 @@ struct SproutApp: App {
     
     var body: some Scene {
         WindowGroup {
-            if !hasCompletedOnboarding {
-                OnboardingView()
-                    .environmentObject(viewModel)
-                    .onAppear {
-                        Task {
-                            await viewModel.loadProfile()
-                            if viewModel.userProfile != nil {
-                                hasCompletedOnboarding = true
-                            }
-                        }
-                    }
-            } else {
-                RootView()
-                    .environmentObject(viewModel)
-                    .preferredColorScheme(darkModeEnabled ? .dark : .light)
-                    .task {
-                        await viewModel.loadProfile()
-                    }
-            }
+            RootView()
+                .environmentObject(viewModel)
+                .preferredColorScheme(darkModeEnabled ? .dark : .light)
+                .task {
+                    // Always try to load or create profile on app launch
+                    await viewModel.loadProfile()
+                }
         }
     }
 }
