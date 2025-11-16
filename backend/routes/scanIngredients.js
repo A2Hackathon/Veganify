@@ -59,12 +59,18 @@ router.post("/", upload.single("image"), async (req, res) => {
 
     const formatted = checks.map((item) => ({
       name: item.ingredient,
-      status: mapStatus(item.allowed),
+      allowed: item.allowed || "Allowed",
       reason: item.reason || "",
       suggestions: item.suggestions || [],
     }));
 
-    res.json({ ingredients: formatted });
+    const allAllowed = formatted.every(item => item.allowed === "Allowed");
+    
+    res.json({
+      success: true,
+      isConsumable: allAllowed,
+      ingredients: formatted,
+    });
   } catch (err) {
     console.error("OCR ingredient scan error:", err);
     res.status(500).json({ error: "Failed to scan ingredients" });
@@ -79,9 +85,18 @@ router.post("/", upload.single("image"), async (req, res) => {
 */
 router.post("/text", async (req, res) => {
   try {
-    const { text } = req.body;
-    if (!text) {
-      return res.status(400).json({ error: "text required" });
+    const { text, ingredients: ingredientsArray } = req.body;
+    
+    let ingredientsList;
+    if (Array.isArray(ingredientsArray) && ingredientsArray.length > 0) {
+      ingredientsList = ingredientsArray;
+    } else if (text) {
+      ingredientsList = text
+        .split(/[\n,]/)
+        .map((x) => x.trim())
+        .filter(Boolean);
+    } else {
+      return res.status(400).json({ error: "text or ingredients required" });
     }
 
     // ALWAYS use the single Albert user
@@ -98,26 +113,27 @@ router.post("/text", async (req, res) => {
       });
     }
 
-    const ingredients = text
-      .split(/[\n,]/)
-      .map((x) => x.trim())
-      .filter(Boolean);
-
     const prefs = {
       dietLevel: user.dietLevel || "vegan",
       extraForbiddenTags: user.extraForbiddenTags || [],
     };
 
-    const checks = await isAllowedForUser(prefs, ingredients);
+    const checks = await isAllowedForUser(prefs, ingredientsList);
 
     const formatted = checks.map((item) => ({
       name: item.ingredient,
-      status: mapStatus(item.allowed),
+      allowed: item.allowed || "Allowed",
       reason: item.reason || "",
       suggestions: item.suggestions || [],
     }));
 
-    res.json({ ingredients: formatted });
+    const allAllowed = formatted.every(item => item.allowed === "Allowed");
+    
+    res.json({
+      success: true,
+      isConsumable: allAllowed,
+      ingredients: formatted,
+    });
   } catch (err) {
     console.error("Ingredient text analysis error:", err);
     res.status(500).json({ error: "Failed to analyze ingredient text" });

@@ -335,11 +335,17 @@ class APIClient {
             let userId: String
         }
         
-        return try await request(
+        let recipes: [Recipe] = try await request(
             endpoint: "/recipes/generate",
             method: "POST",
             body: Request(userId: userId)
         )
+        
+        guard let firstRecipe = recipes.first else {
+            throw APIError.invalidResponse
+        }
+        
+        return firstRecipe
     }
     
     func veganizeRecipe(userId: String, inputText: String) async throws -> Recipe {
@@ -393,8 +399,18 @@ class APIClient {
     }
     
     struct AdaptedRecipe: Codable {
-        let ingredients: [ChosenSubstitute]
+        let id: String?
+        let userId: String?
+        let title: String?
+        let tags: [String]?
+        let duration: String?
+        let ingredients: [ChosenSubstitute]?
+        let steps: [String]?
         let text: String
+        let previewImageUrl: String?
+        let originalPrompt: String?
+        let type: String?
+        let substitutionMap: [String: String]?
     }
     
     func analyzeIngredient(ingredient: String, context: String, userID: String) async throws -> AnalyzeResponse {

@@ -91,7 +91,33 @@ router.post("/generate", async (req, res) => {
 router.post("/save", async (req, res) => {
   try {
     const recipeData = req.body;
-    const { userId, title } = recipeData;
+    let userId, title, tags, duration, ingredients, steps, previewImageUrl, originalPrompt, type, substitutionMap;
+    
+    if (recipeData.recipe) {
+      const recipe = recipeData.recipe;
+      userId = recipeData.userId;
+      title = recipe.title;
+      tags = recipe.tags;
+      duration = recipe.duration;
+      ingredients = recipe.ingredients;
+      steps = recipe.steps;
+      previewImageUrl = recipe.previewImageUrl;
+      originalPrompt = recipe.originalPrompt;
+      type = recipe.type;
+      substitutionMap = recipe.substitutionMap;
+    } else {
+      userId = recipeData.userId;
+      title = recipeData.title;
+      tags = recipeData.tags;
+      duration = recipeData.duration;
+      ingredients = recipeData.ingredients;
+      steps = recipeData.steps;
+      previewImageUrl = recipeData.previewImageUrl;
+      originalPrompt = recipeData.originalPrompt;
+      type = recipeData.type;
+      substitutionMap = recipeData.substitutionMap;
+    }
+    
     if (!userId || !title) {
       return res.status(400).json({ error: "userId and title required" });
     }
@@ -113,14 +139,14 @@ router.post("/save", async (req, res) => {
     const recipe = await RecipeStorage.create({
       userId: user._id,
       title,
-      tags: recipeData.tags || [],
-      duration: recipeData.duration || "",
-      ingredients: recipeData.ingredients || [],
-      steps: recipeData.steps || [],
-      previewImageUrl: recipeData.previewImageUrl || "",
-      originalPrompt: recipeData.originalPrompt || "",
-      type: recipeData.type || "simplified",
-      substitutionMap: recipeData.substitutionMap || undefined,
+      tags: tags || [],
+      duration: duration || "",
+      ingredients: ingredients || [],
+      steps: steps || [],
+      previewImageUrl: previewImageUrl || "",
+      originalPrompt: originalPrompt || "",
+      type: type || "simplified",
+      substitutionMap: substitutionMap || undefined,
     });
 
     res.json({
@@ -165,7 +191,7 @@ router.post("/veganize", async (req, res) => {
     }
 
     // Extract ingredients
-    console.log("?îç Calling LLM (extractIngredients) for recipe veganization...");
+    console.log("?ÔøΩÔøΩ Calling LLM (extractIngredients) for recipe veganization...");
     const ingredients = await extractIngredients(inputText);
     console.log("??LLM extracted", ingredients.length, "ingredients");
 
@@ -188,7 +214,7 @@ router.post("/veganize", async (req, res) => {
     }
 
     // Rewrite recipe
-    console.log("?îç Calling LLM (rewriteRecipeSteps) to veganize recipe...");
+    console.log("?ÔøΩÔøΩ Calling LLM (rewriteRecipeSteps) to veganize recipe...");
     const rewritten = await rewriteRecipeSteps(adaptedIngredients, inputText);
     console.log("??LLM rewrote recipe successfully");
 
