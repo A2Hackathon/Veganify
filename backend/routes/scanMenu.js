@@ -4,6 +4,7 @@ import Tesseract from "tesseract.js";
 import User from "../models/User.js";
 import { isAllowedForUser } from "../utils/llmClient.js";
 
+
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 

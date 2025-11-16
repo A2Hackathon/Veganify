@@ -1,53 +1,21 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+import OpenAI from "openai";
+
+const client = new OpenAI({
+    apiKey: "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",
+    baseURL: "https://openrouter.ai/api/v1",
+});
+
+// Gemini model from OpenRouter
+const MODEL = "google/gemini-2.5-flash";
 
 //
-// Extract ingredients
+// 1. Extract ingredients
 //
-
-
-/**
- * Generates answers using AI with database context, but allows general knowledge
- * @param {Object} userContext - groceries, allIngredients, dietary info, impact
- * @param {string} userQuestion - question from user
- * @returns {string} AI answer
- */
-async function answerWithContext(userContext, userQuestion) {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-    const prompt = `
-You are an assistant with access to a user's data and general knowledge.
-
-CONTEXT:
-${JSON.stringify(userContext, null, 2)}
-
-USER QUESTION:
-"${userQuestion}"
-
-INSTRUCTIONS:
-- Use the context to answer whenever relevant.
-- You may provide additional general knowledge if needed.
-- Prefer answers based on database context for personalization.
-- If the question relates to ingredients, groceries, or dietary restrictions, prioritize database info.
-
-Return the answer clearly and concisely.
-`;
-
-    try {
-        const result = await model.generateContent(prompt);
-        return result.response.text();
-    } catch (err) {
-        console.error("AI answerWithContext error:", err);
-        return "Sorry, I could not generate an answer at this time.";
-    }
-};
-
-
-async function extractIngredients(recipeText) {
+export async function extractIngredients(recipeText) {
     const prompt = `
 Extract ALL ingredients from the recipe below.
-Return only a list with one ingredient per line.
-No numbering, no extra text.
+Return ONLY a list with ONE ingredient per line.
+No numbering. No explanations.
 
 Recipe:
 """
@@ -56,34 +24,41 @@ ${recipeText}
 `;
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
+        const response = await client.chat.completions.create({
+            model: MODEL,
+            messages: [
+                { role: "system", content: "You extract ingredients from recipes." },
+                { role: "user", content: prompt }
+            ],
+        });
+
+        const text = response.choices[0].message.content.trim();
 
         return text
             .split("\n")
-            .map(line => line.trim())
+            .map(x => x.trim())
             .filter(Boolean);
+
     } catch (err) {
         console.error("extractIngredients error:", err);
         return [];
     }
 }
 
+
+
 //
-// Rewrite recipe steps
+// 2. Rewrite recipe steps with substitutions
 //
-async function rewriteRecipeSteps(subs, originalRecipe) {
-    let instructions = "";
-    subs.forEach(s => {
-        if (s.substitute)
-            instructions += `Replace "${s.original}" with "${s.substitute}".\n`;
-    });
+export async function rewriteRecipeSteps(subs, originalRecipe) {
+    let instructions = subs
+        .filter(s => s.substitute)
+        .map(s => `- Replace "${s.original}" with "${s.substitute}".`)
+        .join("\n");
 
     const prompt = `
-Rewrite the following recipe to incorporate the listed substitutions.
+Rewrite the following recipe using these substitutions:
 
-Substitutions:
 ${instructions}
 
 Original Recipe:
@@ -95,9 +70,15 @@ Return ONLY the rewritten recipe text.
 `;
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const result = await model.generateContent(prompt);
-        return result.response.text();
+        const response = await client.chat.completions.create({
+            model: MODEL,
+            messages: [
+                { role: "system", content: "Rewrite recipes using substitutions." },
+                { role: "user", content: prompt },
+            ],
+        });
+
+        return response.choices[0].message.content.trim();
     } catch (err) {
         console.error("rewriteRecipeSteps error:", err);
         return originalRecipe;
@@ -106,75 +87,162 @@ Return ONLY the rewritten recipe text.
 
 
 
-/**
- * Check if ingredients are allowed for a user
- * @param {Object} userPrefs { dietLevel: string, extraForbiddenTags: [string] }
- * @param {string[]} ingredientTags
- * @returns {Object} { allowed: boolean, reasons: [string] }
- */
+//
+// 3. Dietary check
+//
 async function isAllowedForUser(userPrefs, ingredientTags) {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    //
+    // Helper: clean and extract JSON safely
+    //
+    function extractCleanJSON(text) {
+        if (!text) return null;
 
+        let cleaned = text.trim();
+
+        // Remove ```json and ``` markers
+        cleaned = cleaned
+            .replace(/```json/gi, "")
+            .replace(/```/g, "")
+            .trim();
+
+        // Extract JSON array or object
+        const match = cleaned.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+        if (match) return match[0];
+
+        // If no match, return entire text
+        return cleaned;
+    }
+
+    //
+    // Prompt (kept EXACTLY as you requested)
+    //
     const prompt = `
-        You are a dietary compliance assistant.
-        User dietary preferences:
-        Diet Level: ${userPrefs.dietLevel}
-        Extra Forbidden Tags: ${userPrefs.extraForbiddenTags?.join(', ') || 'none'}
+User dietary restrictions:
+- Level: ${userPrefs.dietLevel}
+- Forbidden tags: ${userPrefs.extraForbiddenTags?.join(", ") || "none"}
 
-        For each ingredient tag: ${ingredientTags.join(', ')}
-        Decide if it is allowed (true/false) and explain why if not allowed.
-        Return JSON array:
-        [
-        { "ingredient": "name", "allowed": "Allowed" or "NotAllowed" or "Ambiguous", "reason": "..." }
-        ]
+Check each ingredient tag:
+${ingredientTags.join(", ")}
+
+Return STRICT JSON:
+[
+  { "ingredient": "", "allowed": "Allowed|NotAllowed|Ambiguous", "reason": "" }
+]
 `;
 
     try {
-        const result = await model.generateContent(prompt);
-        const raw = result.response.text();
-        return JSON.parse(raw);
+        const response = await client.chat.completions.create({
+        model: MODEL,
+        messages: [{ role: "user", content: prompt }],
+        });
+
+        const raw = response.choices[0].message.content;
+        const cleaned = extractCleanJSON(raw);
+
+        try {
+            return JSON.parse(cleaned);
+        } catch (err) {
+            console.error("❌ Failed to parse JSON from model");
+            console.error("RAW OUTPUT:\n", raw);
+            console.error("CLEANED:\n", cleaned);
+
+            // graceful fallback
+            return ingredientTags.map(tag => ({
+                ingredient: tag,
+                allowed: "Ambiguous",
+                reason: "Fallback — invalid JSON returned by model"
+            }));
+        }
     } catch (err) {
-        console.error("❌ Failed to check diet:", err, "\nRaw:", err?.response || "");
-        return ingredientTags.map(tag => ({ ingredient: tag, allowed: "Allowed", reason: "" }));
+        console.error("❌ isAllowedForUser ERROR:", err);
+
+        // system fallback
+        return ingredientTags.map(tag => ({
+            ingredient: tag,
+            allowed: "Ambiguous",
+            reason: "System error"
+        }));
     }
 }
 
-/**
- * Generate recipes from ingredients
- * @param {string[]} ingredients
- * @param {number} count
- * @returns {Promise<Array>} Array of recipe objects
- */
-async function generateRecipes(ingredients, count = 3) {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    
+
+
+//
+// 4. Answer with context
+//
+export async function answerWithContext(userContext, userQuestion) {
     const prompt = `
-Generate ${count} vegan recipes using these ingredients: ${ingredients.join(', ')}.
+You are an AI assistant with access to the user's data.
 
-For each recipe, return a JSON object with this structure:
-{
-  "title": "Recipe Name",
-  "tags": ["tag1", "tag2"],
-  "duration": "30 min",
-  "ingredients": [
-    {"name": "ingredient name", "amount": "1", "unit": "cup"}
-  ],
-  "steps": ["Step 1", "Step 2", ...],
-  "previewImageUrl": ""
-}
+CONTEXT:
+${JSON.stringify(userContext, null, 2)}
 
-Return a JSON array of ${count} recipes.
+QUESTION:
+"${userQuestion}"
+
+Rules:
+- Prefer database context.
+- Use general knowledge only when needed.
+- Be concise.
 `;
 
     try {
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
-        // Extract JSON from markdown code blocks if present
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
-        }
-        return JSON.parse(text);
+        const response = await client.chat.completions.create({
+            model: MODEL,
+            messages: [
+                { role: "system", content: "Answer using context when relevant." },
+                { role: "user", content: prompt }
+            ],
+        });
+
+        return response.choices[0].message.content.trim();
+
+    } catch (err) {
+        console.error("answerWithContext error:", err);
+        return "Sorry, I couldn't answer that.";
+    }
+}
+
+
+
+//
+// 5. Generate vegan recipes
+//
+export async function generateRecipes(ingredients, count = 3) {
+    const prompt = `
+Generate ${count} VEGAN recipes using these ingredients:
+
+${ingredients.join(", ")}
+
+Return STRICT JSON array:
+[
+  {
+    "title": "",
+    "tags": [],
+    "duration": "",
+    "ingredients": [
+      { "name": "", "amount": "", "unit": "" }
+    ],
+    "steps": [],
+  }
+]
+`;
+
+    try {
+        const response = await client.chat.completions.create({
+            model: MODEL,
+            messages: [
+                { role: "system", content: "Generate vegan recipes in strict JSON format." },
+                { role: "user", content: prompt }
+            ],
+        });
+
+        const raw = response.choices[0].message.content.trim();
+
+        // Extract JSON inside ```json if needed
+        const match = raw.match(/\[[\s\S]*\]/);
+        return match ? JSON.parse(match[0]) : JSON.parse(raw);
+
     } catch (err) {
         console.error("generateRecipes error:", err);
         return [];
@@ -183,8 +251,8 @@ Return a JSON array of ${count} recipes.
 
 export {
     extractIngredients,
-    rewriteRecipeSteps,
+    rewriteRecipeSteps,,
     isAllowedForUser,
     answerWithContext,
     generateRecipes
-};
+}

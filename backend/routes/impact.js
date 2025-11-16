@@ -12,12 +12,18 @@ router.get("/:userId", async (req, res, next) => {
   try {
     const { userId } = req.params;
 
-    // ensure user exists
     const user = await User.findById(userId).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
     const impact = await UserImpact.findOne({ user_id: userId }).lean();
-    if (!impact) return res.json({ total_meals_logged: 0, xp: 0 });
+    if (!impact) {
+      return res.json({
+        total_meals_logged: 0,
+        xp: 0,
+        forest_stage: "SEED",
+        streak_days: 0,
+      });
+    }
 
     res.json(impact);
   } catch (err) {
@@ -38,11 +44,9 @@ router.post("/update", async (req, res, next) => {
     const { user_id } = req.body;
     if (!user_id) return res.status(400).json({ error: "user_id required" });
 
-    // validate the user exists before updating impact
     const user = await User.findById(user_id);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    // find or create the user's impact document
     let impact = await UserImpact.findOne({ user_id });
 
     if (!impact) {
@@ -50,28 +54,33 @@ router.post("/update", async (req, res, next) => {
         user_id,
         total_meals_logged: 0,
         xp: 0,
-        streak: 0,
+        streak_days: 0,
         last_activity_date: null,
-        forest_stage: "SEED"
+        forest_stage: "SEED",
       });
     }
 
     const today = new Date();
-    const last = impact.last_activity_date ? new Date(impact.last_activity_date) : null;
+    const last = impact.last_activity_date
+      ? new Date(impact.last_activity_date)
+      : null;
 
     // streak logic
     let streakBonus = 0;
+
     if (!last) {
-      impact.streak = 1;
+      impact.streak_days = 1;
       streakBonus = 20;
     } else {
-      const diffDays = Math.floor((today - last) / (1000 * 60 * 60 * 24));
+      const diffDays = Math.floor(
+        (today - last) / (1000 * 60 * 60 * 24)
+      );
 
       if (diffDays === 1) {
-        impact.streak += 1;
+        impact.streak_days += 1;
         streakBonus = 20;
       } else if (diffDays > 1) {
-        impact.streak = 1;
+        impact.streak_days = 1;
         streakBonus = 20;
       }
       // diffDays === 0 → same-day log, no streak bonus
@@ -97,14 +106,11 @@ router.post("/update", async (req, res, next) => {
       xp_awarded: xpAwarded,
       meal_xp: mealXP,
       streak_bonus: streakBonus,
-      streak: impact.streak,
-      totals: impact,
-      progress: {
-        xp: impact.xp,
-        forest_stage: impact.forest_stage
-      }
+      total_meals_logged: impact.total_meals_logged,
+      xp: impact.xp,
+      streak_days: impact.streak_days,
+      forest_stage: impact.forest_stage,
     });
-
   } catch (err) {
     next(err);
   }
