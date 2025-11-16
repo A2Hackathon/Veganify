@@ -1,7 +1,4 @@
-import User from "../models/User.js";
-import Recipe from "../models/Recipe.js";
-import UserImpact from "../models/UserImpact.js";
-import { toObjectId } from "./objectIdHelper.js";
+import { UserStorage, RecipeStorage, UserImpactStorage } from "./jsonStorage.js";
 
 export async function getUserContext(userId) {
   if (!userId) {
@@ -22,7 +19,7 @@ export async function getUserContext(userId) {
   
   // Handle shared Albert user
   if (userId === "ALBERT_SHARED_USER") {
-    user = await User.findOne({ sproutName: "Albert" }).lean();
+    user = await UserStorage.findOne({ sproutName: "Albert" });
     if (!user) {
       // Return default context if Albert user doesn't exist yet
       return {
@@ -38,12 +35,24 @@ export async function getUserContext(userId) {
     }
     userObjectId = user._id;
   } else {
-    userObjectId = toObjectId(userId);
-    user = await User.findById(userObjectId).lean();
+    user = await UserStorage.findById(userId);
+    if (!user) {
+      return {
+        user: {
+          dietLevel: "flexitarian",
+          extraForbiddenTags: [],
+          preferredCuisines: [],
+          cookingStylePreferences: [],
+        },
+        recipes: [],
+        impact: null,
+      };
+    }
+    userObjectId = user._id;
   }
   
-  const impact = await UserImpact.findOne({ user_id: userObjectId }).lean();
-  const recipes = await Recipe.find({ userId: userObjectId }).lean();
+  const impact = await UserImpactStorage.findOne({ user_id: userObjectId });
+  const recipes = await RecipeStorage.find({ userId: userObjectId });
 
   return {
     user: {
@@ -53,7 +62,7 @@ export async function getUserContext(userId) {
       cookingStylePreferences: user?.cookingStylePreferences || [],
     },
     recipes: recipes.map((r) => ({
-      id: r._id.toString(),
+      id: r._id || r.id,
       title: r.title,
       tags: r.tags,
       duration: r.duration,

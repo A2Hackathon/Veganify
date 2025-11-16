@@ -1,7 +1,5 @@
 import express from "express";
-import User from "../models/User.js";
-import UserImpact from "../models/UserImpact.js";
-import { toObjectId } from "../utils/objectIdHelper.js";
+import { UserStorage, UserImpactStorage } from "../utils/jsonStorage.js";
 
 const router = express.Router();
 
@@ -17,11 +15,17 @@ router.get("/summary", async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.status(400).json({ error: "userId required" });
 
-    const userObjectId = toObjectId(userId);
-    const user = await User.findById(userObjectId).lean();
-    if (!user) return res.status(404).json({ error: "User not found" });
+    // Handle ALBERT_SHARED_USER
+    let user;
+    if (userId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+    } else {
+      user = await UserStorage.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
 
-    const impact = await UserImpact.findOne({ user_id: userObjectId }).lean();
+    const impact = await UserImpactStorage.findOne({ user_id: user._id });
     const xp = impact?.xp || 0;
     const coins = impact?.coins || 0;
     const streakDays = impact?.streak_days || 0;

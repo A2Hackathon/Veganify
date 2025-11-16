@@ -43,3 +43,21 @@ export function toObjectIdSafe(userId) {
   }
 }
 
+/**
+ * Gets user ObjectId, handling ALBERT_SHARED_USER by finding the Albert user
+ * @param {string} userId - The user ID (can be ALBERT_SHARED_USER or ObjectId string)
+ * @returns {Promise<mongoose.Types.ObjectId>} - The ObjectId of the user
+ * @throws {Error} - If user not found or invalid
+ */
+export async function getUserObjectId(userId) {
+  if (userId === "ALBERT_SHARED_USER") {
+    const User = (await import("../models/User.js")).default;
+    const user = await User.findOne({ sproutName: "Albert" }).lean();
+    if (!user) {
+      throw new Error("Albert user not found. Please create a profile first.");
+    }
+    return user._id;
+  }
+  return toObjectId(userId);
+}
+

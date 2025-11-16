@@ -1,7 +1,5 @@
 import express from "express";
-import User from "../models/User.js";
-import UserImpact from "../models/UserImpact.js";
-import { toObjectId } from "../utils/objectIdHelper.js";
+import { UserStorage, UserImpactStorage } from "../utils/jsonStorage.js";
 
 const router = express.Router();
 
@@ -42,12 +40,12 @@ router.get("/", async (req, res) => {
     // Handle shared Albert user - find or create user with sproutName "Albert"
     if (userId === "ALBERT_SHARED_USER") {
       console.log("🔍 Looking for shared Albert user...");
-      user = await User.findOne({ sproutName: "Albert" }).lean();
+      user = await UserStorage.findOne({ sproutName: "Albert" });
       
       if (!user) {
         console.log("🌱 Shared Albert user not found, creating...");
         // Create shared Albert user
-        const newUser = await User.create({
+        user = await UserStorage.create({
           name: "User",
           dietLevel: "vegan",
           extraForbiddenTags: [],
@@ -58,8 +56,8 @@ router.get("/", async (req, res) => {
         
         // Create UserImpact for Albert
         try {
-          await UserImpact.create({
-            user_id: newUser._id,
+          await UserImpactStorage.create({
+            user_id: user._id,
             xp: 0,
             coins: 0,
             streak_days: 0,
@@ -71,34 +69,32 @@ router.get("/", async (req, res) => {
           console.error("⚠️ Failed to create UserImpact for Albert (non-critical):", impactErr.message);
         }
         
-        user = newUser.toObject();
-        console.log("✅ Shared Albert user created with ID:", user._id.toString());
+        console.log("✅ Shared Albert user created with ID:", user._id);
       } else {
-        console.log("✅ Found existing shared Albert user:", user._id.toString());
+        console.log("✅ Found existing shared Albert user:", user._id);
       }
     } else {
-      // Regular user lookup by ObjectId
-      const userObjectId = toObjectId(userId);
-      user = await User.findById(userObjectId).lean();
+      // Regular user lookup by ID
+      user = await UserStorage.findById(userId);
       if (!user) return res.status(404).json({ error: "User not found" });
     }
 
-    // Get user's ObjectId for impact lookup
+    // Get user's ID for impact lookup
     const userObjectId = user._id;
-    const impact = await UserImpact.findOne({ user_id: userObjectId }).lean();
+    const impact = await UserImpactStorage.findOne({ user_id: userObjectId });
     const xp = impact?.xp || 0;
     const coins = impact?.coins || 0;
     const streakDays = impact?.streak_days || 0;
     const { level, xpToNextLevel } = computeLevelAndXpToNext(xp);
 
     const profile = {
-      id: user._id.toString(),
+      id: user._id || user.id,
       userName: user.name || "User",
       eatingStyle: dietLevelToEatingStyle(user.dietLevel),
       dietaryRestrictions: user.extraForbiddenTags || [],
       cuisinePreferences: user.preferredCuisines || [],
       cookingStylePreferences: user.cookingStylePreferences || [],
-      sproutName: user.sproutName || "Bud",
+      sproutName: user.sproutName || "Albert",
       level,
       xp,
       xpToNextLevel,
@@ -130,32 +126,45 @@ router.patch("/", async (req, res) => {
 
     if (!userId) return res.status(400).json({ error: "id required" });
 
-    const userObjectId = toObjectId(userId);
-    const user = await User.findById(userObjectId);
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    // Update fields
-    user.name = profile.userName || user.name;
-    user.extraForbiddenTags = profile.dietaryRestrictions || [];
-    user.preferredCuisines = profile.cuisinePreferences || [];
-    user.cookingStylePreferences = profile.cookingStylePreferences || [];
-    user.sproutName = profile.sproutName || user.sproutName;
+    let user;
+    let userObjectId;
     
+    // Handle shared Albert user
+    if (userId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+      userObjectId = user._id;
+    } else {
+      user = await UserStorage.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      userObjectId = user._id;
+    }
+
     // Convert eatingStyle back to dietLevel
+    let dietLevel = user.dietLevel;
     if (profile.eatingStyle) {
       const val = profile.eatingStyle.toLowerCase();
-      if (val.includes("vegan")) user.dietLevel = "vegan";
-      else if (val.includes("ovo-vegetarian")) user.dietLevel = "ovo";
-      else if (val.includes("lacto-ovo")) user.dietLevel = "lacto_ovo";
-      else if (val.includes("lacto-vegetarian")) user.dietLevel = "lacto";
-      else if (val.includes("pescatarian")) user.dietLevel = "pescatarian";
-      else if (val.includes("vegetarian")) user.dietLevel = "vegetarian";
-      else user.dietLevel = "flexitarian";
+      if (val.includes("vegan")) dietLevel = "vegan";
+      else if (val.includes("ovo-vegetarian")) dietLevel = "ovo";
+      else if (val.includes("lacto-ovo")) dietLevel = "lacto_ovo";
+      else if (val.includes("lacto-vegetarian")) dietLevel = "lacto";
+      else if (val.includes("pescatarian")) dietLevel = "pescatarian";
+      else if (val.includes("vegetarian")) dietLevel = "vegetarian";
+      else dietLevel = "flexitarian";
     }
     
-    await user.save();
-    console.log("✅ Profile saved to MongoDB:", {
-      userId: user._id.toString(),
+    // Update user
+    user = await UserStorage.findByIdAndUpdate(userObjectId, {
+      name: profile.userName || user.name,
+      dietLevel: dietLevel,
+      extraForbiddenTags: profile.dietaryRestrictions || [],
+      preferredCuisines: profile.cuisinePreferences || [],
+      cookingStylePreferences: profile.cookingStylePreferences || [],
+      sproutName: profile.sproutName || user.sproutName,
+    });
+    
+    console.log("✅ Profile saved to JSON storage:", {
+      userId: user._id,
       dietLevel: user.dietLevel,
       extraForbiddenTags: user.extraForbiddenTags.length,
       preferredCuisines: user.preferredCuisines.length,
@@ -163,20 +172,20 @@ router.patch("/", async (req, res) => {
       sproutName: user.sproutName
     });
 
-    const impact = await UserImpact.findOne({ user_id: userObjectId }).lean();
+    const impact = await UserImpactStorage.findOne({ user_id: userObjectId });
     const xp = impact?.xp || 0;
     const coins = impact?.coins || 0;
     const streakDays = impact?.streak_days || 0;
     const { level, xpToNextLevel } = computeLevelAndXpToNext(xp);
 
     const updatedProfile = {
-      id: user._id.toString(),
+      id: user._id || user.id,
       userName: user.name || "User",
       eatingStyle: dietLevelToEatingStyle(user.dietLevel),
       dietaryRestrictions: user.extraForbiddenTags || [],
       cuisinePreferences: user.preferredCuisines || [],
       cookingStylePreferences: user.cookingStylePreferences || [],
-      sproutName: user.sproutName || "Bud",
+      sproutName: user.sproutName || "Albert",
       level,
       xp,
       xpToNextLevel,

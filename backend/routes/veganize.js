@@ -1,8 +1,6 @@
 import express from "express";
-import User from "../models/User.js";
-import Recipe from "../models/Recipe.js";
+import { UserStorage, RecipeStorage } from "../utils/jsonStorage.js";
 import { extractIngredients, rewriteRecipeSteps, isAllowedForUser } from "../utils/llmClient.js";
-import { toObjectId, toObjectIdSafe } from "../utils/objectIdHelper.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -22,9 +20,15 @@ router.post("/analyze", async (req, res) => {
       return res.status(400).json({ error: "userId/userID and recipeText/recipe required" });
     }
 
-    const userObjectId = toObjectId(actualUserId);
-    const user = await User.findById(userObjectId).lean();
-    if (!user) return res.status(404).json({ error: "User not found" });
+    // Handle ALBERT_SHARED_USER
+    let user;
+    if (actualUserId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+    } else {
+      user = await UserStorage.findById(actualUserId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
 
     const ingredients = await extractIngredients(recipeContent);
 
@@ -84,11 +88,14 @@ router.post("/commit", async (req, res) => {
 
     // userId is optional in commit route, but preferred if provided
     let user = null;
-    let userObjectId = null;
     if (actualUserId) {
-      userObjectId = toObjectId(actualUserId);
-      user = await User.findById(userObjectId).lean();
-      if (!user) return res.status(404).json({ error: "User not found" });
+      if (actualUserId === "ALBERT_SHARED_USER") {
+        user = await UserStorage.findOne({ sproutName: "Albert" });
+        if (!user) return res.status(404).json({ error: "Albert user not found" });
+      } else {
+        user = await UserStorage.findById(actualUserId);
+        if (!user) return res.status(404).json({ error: "User not found" });
+      }
     }
 
     const rewritten = await rewriteRecipeSteps(subs, recipeContent);
@@ -106,8 +113,8 @@ router.post("/commit", async (req, res) => {
       }
     });
 
-    const savedRecipe = await Recipe.create({
-      userId: userObjectId || null,
+    const savedRecipe = await RecipeStorage.create({
+      userId: user?._id || null,
       title: "Veganized Recipe",
       tags: ["veganized"],
       duration: "",
@@ -120,8 +127,8 @@ router.post("/commit", async (req, res) => {
     });
 
     const adaptedRecipe = {
-      id: savedRecipe._id.toString(),
-      userId: savedRecipe.userId?.toString() || null,
+      id: savedRecipe._id || savedRecipe.id,
+      userId: savedRecipe.userId || null,
       title: savedRecipe.title,
       tags: savedRecipe.tags,
       duration: savedRecipe.duration,

@@ -15,12 +15,13 @@ router.post("/ask", async (req, res) => {
   }
 
   try {
-    const userObjectId = toObjectId(actualUserId);
-    const context = await getUserContext(userObjectId.toString());
+    // getUserContext handles ALBERT_SHARED_USER internally, so pass it directly
+    const context = await getUserContext(actualUserId);
     const answer = await answerWithContext(context, question);
     res.json({ answer });
   } catch (err) {
     console.error("ai/ask error:", err);
+    console.error("   Error details:", err.message);
     res.status(500).json({ error: "Failed to get AI answer" });
   }
 });

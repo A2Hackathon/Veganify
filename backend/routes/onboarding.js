@@ -1,7 +1,5 @@
 import express from "express";
-import User from "../models/User.js";
-import UserImpact from "../models/UserImpact.js";
-import { toObjectId } from "../utils/objectIdHelper.js";
+import { UserStorage, UserImpactStorage } from "../utils/jsonStorage.js";
 
 const router = express.Router();
 
@@ -43,21 +41,20 @@ router.post("/profile", async (req, res) => {
     let user;
     if (sproutName === "Albert") {
       console.log("🔍 Checking for existing Albert user...");
-      user = await User.findOne({ sproutName: "Albert" }).lean();
+      user = await UserStorage.findOne({ sproutName: "Albert" });
       
       if (user) {
         console.log("✅ Found existing Albert user, updating preferences...");
         // Update existing Albert user with new preferences
-        await User.findByIdAndUpdate(user._id, {
+        user = await UserStorage.findByIdAndUpdate(user._id, {
           dietLevel,
           extraForbiddenTags: dietaryRestrictions || [],
           preferredCuisines: cuisinePreferences || [],
           cookingStylePreferences: cookingStylePreferences || [],
         });
-        user = await User.findById(user._id).lean();
       } else {
         console.log("🌱 Creating new Albert user...");
-        user = await User.create({
+        user = await UserStorage.create({
           name: "User",
           dietLevel,
           extraForbiddenTags: dietaryRestrictions || [],
@@ -65,25 +62,23 @@ router.post("/profile", async (req, res) => {
           cookingStylePreferences: cookingStylePreferences || [],
           sproutName: "Albert",
         });
-        user = user.toObject();
       }
     } else {
       // Create new user for non-Albert sprout names
-      user = await User.create({
+      user = await UserStorage.create({
         name: "User",
         dietLevel,
         extraForbiddenTags: dietaryRestrictions || [],
         preferredCuisines: cuisinePreferences || [],
         cookingStylePreferences: cookingStylePreferences || [],
-        sproutName: sproutName || "Bud",
+        sproutName: sproutName || "Albert",
       });
-      user = user.toObject();
     }
 
-    console.log("✅ User created in MongoDB with ID:", user._id.toString());
+    console.log("✅ User created in JSON storage with ID:", user._id);
 
     try {
-      await UserImpact.create({
+      await UserImpactStorage.create({
         user_id: user._id,
         xp: 0,
         coins: 0,
@@ -91,20 +86,20 @@ router.post("/profile", async (req, res) => {
         total_meals_logged: 0,
         forest_stage: "SEED",
       });
-      console.log("✅ UserImpact created for user:", user._id.toString());
+      console.log("✅ UserImpact created for user:", user._id);
     } catch (impactErr) {
       console.error("⚠️ Failed to create UserImpact (non-critical):", impactErr.message);
       // Continue even if UserImpact creation fails
     }
 
     const profile = {
-      id: user._id.toString(),
+      id: user._id || user.id,
       userName: user.name || "User",
       eatingStyle,
       dietaryRestrictions: user.extraForbiddenTags || [],
       cuisinePreferences: user.preferredCuisines || [],
       cookingStylePreferences: user.cookingStylePreferences || [],
-      sproutName: user.sproutName || "Bud",
+      sproutName: user.sproutName || "Albert",
       level: 1,
       xp: 0,
       xpToNextLevel: 100,

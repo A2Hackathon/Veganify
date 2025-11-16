@@ -1,9 +1,7 @@
 import express from "express";
-import GroceryItem from "../models/GroceryItem.js";
-import User from "../models/User.js";
+import { UserStorage, GroceryItemStorage } from "../utils/jsonStorage.js";
 import multer from "multer";
 import Tesseract from "tesseract.js";
-import { toObjectId } from "../utils/objectIdHelper.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -14,15 +12,24 @@ router.get("/", async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.status(400).json({ error: "userId required" });
 
-    const userObjectId = toObjectId(userId);
-    const items = await GroceryItem.find({ userId: userObjectId }).lean();
+    // Handle ALBERT_SHARED_USER
+    let user;
+    if (userId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+    } else {
+      user = await UserStorage.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
+
+    const items = await GroceryItemStorage.find({ userId: user._id });
 
     const result = items.map((i) => ({
-      id: i._id.toString(),
+      id: i._id || i.id,
       name: i.name,
       category: i.category || "Uncategorized",
       isChecked: !!i.isChecked,
-      userId: i.userId.toString(),
+      userId: i.userId || user._id,
     }));
 
     res.json(result);
@@ -39,22 +46,28 @@ router.post("/", async (req, res) => {
     if (!userId || !name)
       return res.status(400).json({ error: "userId and name required" });
 
-    const userObjectId = toObjectId(userId);
-    const user = await User.findById(userObjectId).lean();
-    if (!user) return res.status(404).json({ error: "User not found" });
+    // Handle ALBERT_SHARED_USER
+    let user;
+    if (userId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+    } else {
+      user = await UserStorage.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
 
-    const item = await GroceryItem.create({
-      userId: userObjectId,
+    const item = await GroceryItemStorage.create({
+      userId: user._id,
       name,
       category: category || "Uncategorized",
     });
 
     res.json({
-      id: item._id.toString(),
+      id: item._id || item.id,
       name: item.name,
       category: item.category,
-      isChecked: item.isChecked,
-      userId: item.userId.toString(),
+      isChecked: item.isChecked || false,
+      userId: item.userId || user._id,
     });
   } catch (err) {
     console.error("add grocery item error:", err);
@@ -71,7 +84,15 @@ router.post("/scan-fridge", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: "image required" });
     }
 
-    const userObjectId = toObjectId(userId);
+    // Handle ALBERT_SHARED_USER
+    let user;
+    if (userId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+    } else {
+      user = await UserStorage.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
 
     // OCR the image
     const result = await Tesseract.recognize(req.file.path, "eng");
@@ -85,17 +106,17 @@ router.post("/scan-fridge", upload.single("image"), async (req, res) => {
 
     const createdItems = [];
     for (const line of lines) {
-      const item = await GroceryItem.create({
-        userId: userObjectId,
+      const item = await GroceryItemStorage.create({
+        userId: user._id,
         name: line,
         category: "Uncategorized",
       });
       createdItems.push({
-        id: item._id.toString(),
+        id: item._id || item.id,
         name: item.name,
         category: item.category,
-        isChecked: item.isChecked,
-        userId: item.userId.toString(),
+        isChecked: item.isChecked || false,
+        userId: item.userId || user._id,
       });
     }
 
@@ -115,7 +136,15 @@ router.post("/scan-receipt", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: "image required" });
     }
 
-    const userObjectId = toObjectId(userId);
+    // Handle ALBERT_SHARED_USER
+    let user;
+    if (userId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+    } else {
+      user = await UserStorage.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
 
     const result = await Tesseract.recognize(req.file.path, "eng");
     const text = result.data.text || "";
@@ -127,17 +156,17 @@ router.post("/scan-receipt", upload.single("image"), async (req, res) => {
 
     const createdItems = [];
     for (const line of lines) {
-      const item = await GroceryItem.create({
-        userId: userObjectId,
+      const item = await GroceryItemStorage.create({
+        userId: user._id,
         name: line,
         category: "Uncategorized",
       });
       createdItems.push({
-        id: item._id.toString(),
+        id: item._id || item.id,
         name: item.name,
         category: item.category,
-        isChecked: item.isChecked,
-        userId: item.userId.toString(),
+        isChecked: item.isChecked || false,
+        userId: item.userId || user._id,
       });
     }
 

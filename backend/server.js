@@ -3,7 +3,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import connectDB from "./db/connect.js";
+// Initialize JSON storage (replaces MongoDB)
+import "./utils/jsonStorage.js";
 
 // route imports
 import scanIngredientsRoutes from "./routes/scanIngredients.js";
@@ -21,18 +22,9 @@ import recipesRoutes from "./routes/recipes.js";
 
 dotenv.config();
 
-// Connect to MongoDB
-try {
-  await connectDB(); // connect to MongoDB
-  console.log("✅ MongoDB connection successful");
-} catch (err) {
-  console.error("❌ Failed to connect to MongoDB:", err.message);
-  console.error("   Make sure MongoDB is running and MONGO_URI is correct in .env file");
-  process.exit(1);
-}
-
 const app = express();
 console.log("✅ Express app created");
+console.log("✅ Using JSON file storage (MongoDB removed)");
 
 // CORS configuration - allow all origins for development
 app.use(cors({

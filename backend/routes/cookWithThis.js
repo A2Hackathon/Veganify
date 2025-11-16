@@ -1,9 +1,7 @@
 // routes/cookWithThis.js (Albert, updated to match new impact system)
 import express from "express";
 import { generateRecipes } from "../utils/llmClient.js";
-import UserImpact from "../models/UserImpact.js";
-import Grocery from "../models/grocery.js";
-import { toObjectId } from "../utils/objectIdHelper.js";
+import { UserImpactStorage, GroceryItemStorage } from "../utils/jsonStorage.js";
 const router = express.Router();
 
 /**
@@ -20,18 +18,27 @@ router.post("/", async (req, res, next) => {
   try {
     const { user_id } = req.body;
 
-if (!user_id) {
-  return res.status(400).json({ error: "user_id is required to get groceries" });
-}
+    if (!user_id) {
+      return res.status(400).json({ error: "user_id is required to get groceries" });
+    }
 
-const userObjectId = toObjectId(user_id);
+    // Handle ALBERT_SHARED_USER - convert user_id to userId format
+    const userId = user_id === "ALBERT_SHARED_USER" ? "ALBERT_SHARED_USER" : user_id;
+    
+    // Get all groceries for this user
+    let groceries = [];
+    if (userId === "ALBERT_SHARED_USER") {
+      const { UserStorage } = await import("../utils/jsonStorage.js");
+      const user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (user) {
+        groceries = await GroceryItemStorage.find({ userId: user._id });
+      }
+    } else {
+      groceries = await GroceryItemStorage.find({ userId });
+    }
 
-// Get all groceries for this user
-const groceries = await Grocery.find({ userID: userObjectId }).lean();
-
-// Convert to ingredient names
-const ingredients = groceries.map(g => g.name);
-
+    // Convert to ingredient names
+    const ingredients = groceries.map(g => g.name);
 
     // generate 3 recipes
     console.log("🔍 Calling LLM (generateRecipes) for 'Cook With This' feature...");
@@ -41,15 +48,28 @@ const ingredients = groceries.map(g => g.name);
     let progress = null;
 
     if (user_id) {
+      // Get user ID for impact
+      let userObjectId;
+      if (userId === "ALBERT_SHARED_USER") {
+        const { UserStorage } = await import("../utils/jsonStorage.js");
+        const user = await UserStorage.findOne({ sproutName: "Albert" });
+        if (!user) {
+          return res.json({ recipes, progress: null });
+        }
+        userObjectId = user._id;
+      } else {
+        userObjectId = userId;
+      }
+
       // find or create UserImpact (ensure required structure)
-      let impact = await UserImpact.findOne({ user_id: userObjectId });
+      let impact = await UserImpactStorage.findOne({ user_id: userObjectId });
 
       if (!impact) {
-        impact = await UserImpact.create({
+        impact = await UserImpactStorage.create({
           user_id: userObjectId,
           xp: 0,
           total_meals_logged: 0,
-          streak: 0,
+          streak_days: 0,
           forest_stage: "SEED",
           last_activity_date: null
         });
@@ -66,7 +86,7 @@ const ingredients = groceries.map(g => g.name);
       else if (impact.xp < 1500) impact.forest_stage = "FOREST";
       else impact.forest_stage = "ANCIENT_FOREST";
 
-      await impact.save();
+      await UserImpactStorage.save(impact);
 
       progress = {
         xp: impact.xp,

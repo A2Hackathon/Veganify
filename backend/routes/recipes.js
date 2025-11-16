@@ -1,8 +1,6 @@
 import express from "express";
-import Recipe from "../models/Recipe.js";
-import User from "../models/User.js";
+import { RecipeStorage, UserStorage, GroceryItemStorage } from "../utils/jsonStorage.js";
 import { generateRecipes, extractIngredients, rewriteRecipeSteps } from "../utils/llmClient.js";
-import { toObjectId } from "../utils/objectIdHelper.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -20,15 +18,20 @@ router.post("/generate", async (req, res) => {
       return res.status(400).json({ error: "userId required" });
     }
 
-    const userObjectId = toObjectId(userId);
-    const user = await User.findById(userObjectId).lean();
-    if (!user) return res.status(404).json({ error: "User not found" });
+    // Handle ALBERT_SHARED_USER
+    let user;
+    if (userId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+    } else {
+      user = await UserStorage.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
 
     // If ingredients not provided, fetch from grocery list
     let ingredientsList = ingredients;
     if (!Array.isArray(ingredientsList) || ingredientsList.length === 0) {
-      const GroceryItem = (await import("../models/GroceryItem.js")).default;
-      const groceryItems = await GroceryItem.find({ userId: userObjectId }).lean();
+      const groceryItems = await GroceryItemStorage.find({ userId: user._id });
       ingredientsList = groceryItems.map(item => item.name);
     }
 
@@ -40,8 +43,8 @@ router.post("/generate", async (req, res) => {
 
     const saved = [];
     for (const r of generated) {
-      const recipe = await Recipe.create({
-        userId: userObjectId,
+      const recipe = await RecipeStorage.create({
+        userId: user._id,
         title: r.title || "Untitled",
         tags: r.tags || [],
         duration: r.duration || "",
@@ -59,8 +62,8 @@ router.post("/generate", async (req, res) => {
       });
 
       saved.push({
-        id: recipe._id.toString(),
-        userId: recipe.userId?.toString() || null,
+        id: recipe._id || recipe.id,
+        userId: recipe.userId || user._id,
         title: recipe.title,
         tags: recipe.tags,
         duration: recipe.duration,
@@ -89,9 +92,18 @@ router.post("/save", async (req, res) => {
       return res.status(400).json({ error: "userId and title required" });
     }
 
-    const userObjectId = toObjectId(userId);
-    const recipe = await Recipe.create({
-      userId: userObjectId,
+    // Handle ALBERT_SHARED_USER
+    let user;
+    if (userId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+    } else {
+      user = await UserStorage.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
+
+    const recipe = await RecipeStorage.create({
+      userId: user._id,
       title,
       tags: recipeData.tags || [],
       duration: recipeData.duration || "",
@@ -104,8 +116,8 @@ router.post("/save", async (req, res) => {
     });
 
     res.json({
-      id: recipe._id.toString(),
-      userId: recipe.userId?.toString() || null,
+      id: recipe._id || recipe.id,
+      userId: recipe.userId || user._id,
       title: recipe.title,
       tags: recipe.tags,
       duration: recipe.duration,
@@ -130,9 +142,15 @@ router.post("/veganize", async (req, res) => {
       return res.status(400).json({ error: "userId and inputText required" });
     }
 
-    const userObjectId = toObjectId(userId);
-    const user = await User.findById(userObjectId).lean();
-    if (!user) return res.status(404).json({ error: "User not found" });
+    // Handle ALBERT_SHARED_USER
+    let user;
+    if (userId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+    } else {
+      user = await UserStorage.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
 
     // Extract ingredients
     console.log("🔍 Calling LLM (extractIngredients) for recipe veganization...");
@@ -178,8 +196,8 @@ router.post("/veganize", async (req, res) => {
     }));
 
     // Save recipe
-    const recipe = await Recipe.create({
-      userId: userObjectId,
+    const recipe = await RecipeStorage.create({
+      userId: user._id,
       title: "Veganized Recipe",
       tags: ["veganized"],
       duration: "30 min",
@@ -192,8 +210,8 @@ router.post("/veganize", async (req, res) => {
     });
 
     const result = {
-      id: recipe._id.toString(),
-      userId: recipe.userId?.toString() || null,
+      id: recipe._id || recipe.id,
+      userId: recipe.userId || user._id,
       title: recipe.title,
       tags: recipe.tags,
       duration: recipe.duration,
@@ -218,12 +236,21 @@ router.get("/saved", async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.status(400).json({ error: "userId required" });
 
-    const userObjectId = toObjectId(userId);
-    const recipes = await Recipe.find({ userId: userObjectId }).lean();
+    // Handle ALBERT_SHARED_USER
+    let user;
+    if (userId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+    } else {
+      user = await UserStorage.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
+
+    const recipes = await RecipeStorage.find({ userId: user._id });
 
     const result = recipes.map((r) => ({
-      id: r._id.toString(),
-      userId: r.userId?.toString() || null,
+      id: r._id || r.id,
+      userId: r.userId || user._id,
       title: r.title,
       tags: r.tags || [],
       duration: r.duration || "",

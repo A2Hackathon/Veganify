@@ -1,7 +1,5 @@
 import express from "express";
-import UserImpact from "../models/UserImpact.js";
-import User from "../models/User.js";
-import { toObjectId } from "../utils/objectIdHelper.js";
+import { UserStorage, UserImpactStorage } from "../utils/jsonStorage.js";
 
 const router = express.Router();
 
@@ -48,14 +46,20 @@ router.post("/complete-mission", async (req, res) => {
     if (!userId || !missionId)
       return res.status(400).json({ error: "userId and missionId required" });
 
-    const userObjectId = toObjectId(userId);
-    const user = await User.findById(userObjectId).lean();
-    if (!user) return res.status(404).json({ error: "User not found" });
+    // Handle ALBERT_SHARED_USER
+    let user;
+    if (userId === "ALBERT_SHARED_USER") {
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) return res.status(404).json({ error: "Albert user not found" });
+    } else {
+      user = await UserStorage.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
 
-    let impact = await UserImpact.findOne({ user_id: userObjectId });
+    let impact = await UserImpactStorage.findOne({ user_id: user._id });
     if (!impact) {
-      impact = await UserImpact.create({
-        user_id: userObjectId,
+      impact = await UserImpactStorage.create({
+        user_id: user._id,
         xp: 0,
         coins: 0,
         streak_days: 0,
@@ -67,7 +71,7 @@ router.post("/complete-mission", async (req, res) => {
     const reward = missionRewards(missionId);
     impact.xp += reward.xp;
     impact.coins += reward.coins;
-    await impact.save();
+    await UserImpactStorage.save(impact);
 
     const xp = impact.xp;
     const coins = impact.coins;
@@ -75,13 +79,13 @@ router.post("/complete-mission", async (req, res) => {
     const { level, xpToNextLevel } = computeLevelAndXpToNext(xp);
 
     const profile = {
-      id: user._id.toString(),
+      id: user._id || user.id,
       userName: user.name || "User",
       eatingStyle: dietLevelToEatingStyle(user.dietLevel),
       dietaryRestrictions: user.extraForbiddenTags || [],
       cuisinePreferences: user.preferredCuisines || [],
       cookingStylePreferences: user.cookingStylePreferences || [],
-      sproutName: user.sproutName || "Bud",
+      sproutName: user.sproutName || "Albert",
       level,
       xp,
       xpToNextLevel,
