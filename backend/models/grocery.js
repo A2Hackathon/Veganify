@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const grocerySchema = new mongoose.Schema({
     userID: {
@@ -13,5 +13,5 @@ const grocerySchema = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model("grocery", grocerySchema);
+export default mongoose.model("grocery", grocerySchema);
  

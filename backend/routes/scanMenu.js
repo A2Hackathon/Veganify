@@ -1,16 +1,15 @@
-const express = require('express');
+import express from "express";
+import multer from "multer";
+import Tesseract from "tesseract.js";
+import User from "../models/User.js";
+import { isAllowedForUser } from "../utils/llmClient.js";
+
 const router = express.Router();
-const multer = require('multer');
-const Tesseract = require('tesseract.js');
-
-const User = require('../models/User');
-const { isAllowedForUser } = require('../utils/llmClient');
-
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: "uploads/" });
 
 router.post('/', upload.single('image'), async (req, res) => {
     try {
-        const { userID } = req.body;
+        const userID = req.query.userId || req.body.userID || req.body.userId;
 
         if (!req.file) {
             return res.status(400).json({ success: false, error: "Image is required" });
@@ -40,15 +39,31 @@ router.post('/', upload.single('image'), async (req, res) => {
         for (const line of lines) {
 
             const check = await isAllowedForUser(userPrefs, [line]);
+            const first = check[0] || { allowed: "Ambiguous", reason: "" };
 
             results.push({
                 ingredient: line,
-                allowed: check.allowed,
-                reasons: check.reasons
+                allowed: first.allowed,
+                reasons: first.reason || ""
             });
         }
 
-        res.json({ success: true, items: results });
+        // Format for iOS
+        const dishes = results.map(item => {
+            let status = "suitable";
+            if (item.allowed === "NotAllowed") {
+                status = "not_suitable";
+            } else if (item.allowed === "Ambiguous") {
+                status = "modifiable";
+            }
+            return {
+                name: item.ingredient,
+                status: status,
+                modificationSuggestion: item.allowed !== "Allowed" ? (item.reasons || "May need modifications") : null
+            };
+        });
+        
+        res.json({ dishes: dishes });
 
     } catch (err) {
         console.error("Error scanning menu:", err);
@@ -56,4 +71,4 @@ router.post('/', upload.single('image'), async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;

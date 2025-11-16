@@ -10,8 +10,12 @@ class APIClient {
     private let session: URLSession
     
     init() {
-        // TODO: Update with your backend URL
-        self.baseURL = "http://localhost:3000/api"
+        // Backend URL - matches server port 4000
+        #if DEBUG
+        self.baseURL = "http://localhost:4000"
+        #else
+        self.baseURL = "https://your-production-url.com"
+        #endif
         self.session = URLSession.shared
     }
     
@@ -130,16 +134,48 @@ class APIClient {
         let ingredients: [IngredientClassification]
     }
     
+    struct BackendScanIngredientsResponse: Codable {
+        let success: Bool
+        let isConsumable: Bool
+        let ingredients: [BackendIngredientItem]
+    }
+    
+    struct BackendIngredientItem: Codable {
+        let name: String
+        let allowed: String
+        let reason: String
+    }
+    
     func scanIngredients(image: UIImage, userId: String) async throws -> ScanIngredientsResponse {
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
             throw APIError.invalidImage
         }
         
-        // TODO: Add userId to multipart form
-        return try await request(
+        let backendResponse: BackendScanIngredientsResponse = try await request(
             endpoint: "/scan/ingredients?userId=\(userId)",
             method: "POST",
             imageData: imageData
+        )
+        
+        // Map backend response to iOS format
+        return ScanIngredientsResponse(
+            ingredients: backendResponse.ingredients.map { item in
+                let status: IngredientStatus
+                let allowedStr = item.allowed.trimmingCharacters(in: .whitespaces)
+                if allowedStr == "Allowed" {
+                    status = .allowed
+                } else if allowedStr == "NotAllowed" {
+                    status = .notAllowed
+                } else {
+                    status = .ambiguous
+                }
+                return IngredientClassification(
+                    name: item.name,
+                    status: status,
+                    reason: item.reason,
+                    suggestions: nil
+                )
+            }
         )
     }
     

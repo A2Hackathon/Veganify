@@ -1,9 +1,15 @@
-const express = require('express');
+import express from "express";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import User from "../models/User.js";
+import { extractIngredients, rewriteRecipeSteps } from "../utils/llmClient.js";
+
 const router = express.Router();
 
-const substitutions = require('../config/substitutions.json');
-const User = require('../models/User');
-const { extractIngredients, rewriteRecipeSteps } = require("../utils/llmClient");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const substitutions = JSON.parse(readFileSync(join(__dirname, "../config/substitutions.json"), "utf-8"));
 
 // Step 1: Analyze ingredients only
 router.post('/analyze', async (req, res) => {
@@ -73,7 +79,7 @@ router.post('/commit', async (req, res) => {
             substitute: item.substitute
         }));
 
-        const newRecipe = await llm.rewriteRecipeSteps(adaptedIngredients, recipe.text);
+        const newRecipe = await rewriteRecipeSteps(adaptedIngredients, recipe.text);
 
         res.json({
             success: true,

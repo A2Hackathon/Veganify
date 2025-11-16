@@ -1,11 +1,19 @@
 
 class APIService {
-    static let shared = APIService()
-    private let baseURL = "https://your-backend-url.com/api"
+    static var shared = APIService()
+    private let baseURL: String
     
-    // call /veganize/analyze
+    init() {
+        #if DEBUG
+        self.baseURL = "http://localhost:4000"
+        #else
+        self.baseURL = "https://your-production-url.com"
+        #endif
+    }
+    
+    // call /recipes/veganize/analyze
     func analyzeIngredient(ingredient: String, context: String, userID: String) async throws -> AnalyzeResponse {
-        let url = URL(string: "\(baseURL)/veganize/analyze")!
+        let url = URL(string: "\(baseURL)/recipes/veganize/analyze")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -18,7 +26,7 @@ class APIService {
     }
 
     func commitSubstitutions(recipeText: String, chosenSubs: [ChosenSubstitute]) async throws -> String {
-        let url = URL(string: "\(baseURL)/veganize/commit")!
+        let url = URL(string: "\(baseURL)/recipes/veganize/commit")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -36,7 +44,7 @@ class APIService {
     }
 
     func scanIngredients(imageData: Data, userID: String) async throws -> ScanIngredientsResponse {
-        let url = URL(string: "\(baseURL)/scan-ingredients")!
+        let url = URL(string: "\(baseURL)/scan/ingredients?userId=\(userID)")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
 
@@ -46,11 +54,6 @@ class APIService {
 
         // Build multipart form body
         var body = Data()
-
-        // Add userID field
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"userID\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(userID)\r\n".data(using: .utf8)!)
 
         // Add image file field
         body.append("--\(boundary)\r\n".data(using: .utf8)!)

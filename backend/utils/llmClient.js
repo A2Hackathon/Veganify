@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 //
@@ -125,7 +125,7 @@ async function isAllowedForUser(userPrefs, ingredientTags) {
         Decide if it is allowed (true/false) and explain why if not allowed.
         Return JSON array:
         [
-        { "ingredient": "name", "allowed": 'Allowed" or "NotAllowed" or "Ambiguous", "reason": "..." }
+        { "ingredient": "name", "allowed": "Allowed" or "NotAllowed" or "Ambiguous", "reason": "..." }
         ]
 `;
 
@@ -139,9 +139,52 @@ async function isAllowedForUser(userPrefs, ingredientTags) {
     }
 }
 
-module.exports = {
+/**
+ * Generate recipes from ingredients
+ * @param {string[]} ingredients
+ * @param {number} count
+ * @returns {Promise<Array>} Array of recipe objects
+ */
+async function generateRecipes(ingredients, count = 3) {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    
+    const prompt = `
+Generate ${count} vegan recipes using these ingredients: ${ingredients.join(', ')}.
+
+For each recipe, return a JSON object with this structure:
+{
+  "title": "Recipe Name",
+  "tags": ["tag1", "tag2"],
+  "duration": "30 min",
+  "ingredients": [
+    {"name": "ingredient name", "amount": "1", "unit": "cup"}
+  ],
+  "steps": ["Step 1", "Step 2", ...],
+  "previewImageUrl": ""
+}
+
+Return a JSON array of ${count} recipes.
+`;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        // Extract JSON from markdown code blocks if present
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+        return JSON.parse(text);
+    } catch (err) {
+        console.error("generateRecipes error:", err);
+        return [];
+    }
+}
+
+export {
     extractIngredients,
     rewriteRecipeSteps,
     isAllowedForUser,
-    answerWithContext
+    answerWithContext,
+    generateRecipes
 };

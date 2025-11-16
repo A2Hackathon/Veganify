@@ -191,13 +191,14 @@ struct ScanView: View {
                 ImagePicker(image: $selectedImage, sourceType: sourceType)
             }
             .onChange(of: selectedImage) { newImage in
-                if let image = newImage,
-                   let imageData = image.jpegData(compressionQuality: 0.8) {
+                if let image = newImage {
                     Task {
                         if scanMode == .ingredients {
-                            await vm.scanIngredients(imageData: imageData)
+                            if let imageData = image.jpegData(compressionQuality: 0.8) {
+                                await vm.scanIngredients(imageData: imageData)
+                            }
                         } else {
-                            await vm.scanMenu(imageData: imageData)
+                            await vm.scanMenu(image: image)
                         }
                     }
                 }

@@ -1,6 +1,6 @@
 // utils/userContext.js
 import UserImpact from "../models/UserImpact.js";
-import Recipe from "../models/recipe.js";
+import Recipe from "../models/Recipe.js";
 import User from "../models/User.js";
 
 /**

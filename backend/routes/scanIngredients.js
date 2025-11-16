@@ -1,16 +1,15 @@
-const express = require('express');
+import express from "express";
+import multer from "multer";
+import Tesseract from "tesseract.js";
+import User from "../models/User.js";
+import { isAllowedForUser } from "../utils/llmClient.js";
+
 const router = express.Router();
-const multer = require('multer');
-const Tesseract = require('tesseract.js');
-
-const User = require('../models/User');
-const { isAllowedForUser } = require('../utils/llmClient');
-
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: "uploads/" });
 
 router.post('/', upload.single('image'), async (req, res) => {
     try {
-        const { userID } = req.body;
+        const userID = req.query.userId || req.body.userID || req.body.userId;
         if (!req.file) {
             return res.status(400).json({ success: false, error: "Image is required" });
         }
@@ -34,10 +33,17 @@ router.post('/', upload.single('image'), async (req, res) => {
             ingredients
         );
 
-        // Return the results
-        res.json({ success: true, 
+        // Format for iOS - map to expected format
+        const formattedIngredients = checkResults.map(r => ({
+            name: r.ingredient || r.name || "",
+            allowed: r.allowed || "Allowed",
+            reason: r.reason || r.reasons?.[0] || ""
+        }));
+        
+        res.json({ 
+            success: true, 
             isConsumable: checkResults.every(r => r.allowed === 'Allowed'),
-            ingredients: checkResults 
+            ingredients: formattedIngredients 
         });
 
     } catch (err) {
@@ -46,4 +52,4 @@ router.post('/', upload.single('image'), async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;

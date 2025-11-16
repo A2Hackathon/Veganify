@@ -11,6 +11,7 @@ import scanMenuRoutes from "./routes/scanMenu.js";
 import veganizeRoutes from "./routes/veganize.js";
 import cookRoutes from "./routes/cookWithThis.js";
 import impactRoutes from "./routes/impact.js";
+import aiAskRoutes from "./routes/aiAsk.js";
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use("/scan/menu", scanMenuRoutes);
 app.use("/recipes/veganize", veganizeRoutes);
 app.use("/recipes/from-ingredients", cookRoutes);
 app.use("/impact", impactRoutes);
+app.use("/ai", aiAskRoutes);
 
 // basic error handler
 app.use((err, req, res, next) => {

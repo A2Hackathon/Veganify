@@ -227,20 +227,30 @@ class SproutViewModel: ObservableObject {
     
     
     func scanIngredients(imageData: Data) async {
+        guard let userId = userProfile?.id else { return }
         isLoading = true
         defer { isLoading = false }
 
         do {
             // Send image directly to backend
-            let response = try await APIService.shared.scanIngredients(imageData: imageData, userID: currentUserID)
+            let response = try await APIService.shared.scanIngredients(imageData: imageData, userID: userId)
 
             // Map backend results into your local model
             scannedIngredients = response.ingredients.map { item in
-                IngredientClassification(
-                    id: UUID().uuidString,
-                    name: item.name,          // or item.original depending on your backend response
-                    status: item.allowed == "Allowed" ? .allowed : .notAllowed,
-                    reason: item.reason ?? "Scanned from receipt"
+                let status: IngredientStatus
+                let allowedStr = item.allowed.trimmingCharacters(in: .whitespaces)
+                if allowedStr == "Allowed" {
+                    status = .allowed
+                } else if allowedStr == "NotAllowed" {
+                    status = .notAllowed
+                } else {
+                    status = .ambiguous
+                }
+                return IngredientClassification(
+                    name: item.name,
+                    status: status,
+                    reason: item.reason ?? "",
+                    suggestions: nil
                 )
             }
 
@@ -265,13 +275,14 @@ class SproutViewModel: ObservableObject {
     }
     
     func getAlternativeProduct(productType: String, context: String) async -> [String] {
+        guard let userId = userProfile?.id else { return [] }
         do {
             let response = try await APIService.shared.analyzeIngredient(
                 ingredient: productType,
                 context: context,
-                userID: currentUserID
+                userID: userId
             )
-            return response.suggestions  // array of substitutions from backend
+            return response.problematicIngredients.first?.suggestions ?? []
         } catch {
             print("Error fetching alternatives:", error)
             return []
