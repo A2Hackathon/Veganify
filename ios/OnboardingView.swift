@@ -930,7 +930,7 @@ class OnboardingViewModel: ObservableObject {
                 UserDefaults.standard.set(createdProfile.id, forKey: "currentUserId")
                 isCompleted = true
             }
-        } catch let error {
+        } catch {
             print("Error completing onboarding: \(error)")
             // Handle error - for now, still mark as completed
             await MainActor.run {

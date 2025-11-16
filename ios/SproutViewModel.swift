@@ -127,47 +127,102 @@ class SproutViewModel: ObservableObject {
     }
     
     func sendChatMessage(_ text: String) async {
-        guard let userId = userProfile?.id else { return }
+        guard let userId = userProfile?.id else {
+            print("❌ No user ID for chatbot")
+            chatMessages.append(ChatMessage(isUser: false, text: "Please complete onboarding first."))
+            return
+        }
         isLoading = true
         defer { isLoading = false }
         
+        print("💬 Sending chat message to backend:", text)
         do {
             let response = try await apiClient.sendChatMessage(userId: userId, question: text)
-            let message = ChatMessage(isUser: false, text: response.answer)
-            chatMessages.append(message)
+            print("✅ Received AI response:", response.answer)
+            await MainActor.run {
+                let message = ChatMessage(isUser: false, text: response.answer)
+                chatMessages.append(message)
+            }
         } catch {
+            print("❌ Chatbot error: \(error)")
             errorMessage = "Failed to send message: \(error.localizedDescription)"
-            chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't process that. Please try again."))
+            await MainActor.run {
+                chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't process that. Please try again."))
+            }
         }
     }
     
     func generateRecipe() async {
-        guard let userId = userProfile?.id else { return }
+        guard let userId = userProfile?.id else {
+            await MainActor.run {
+                chatMessages.append(ChatMessage(isUser: false, text: "Please complete onboarding first to generate recipes."))
+            }
+            return
+        }
         isLoading = true
         defer { isLoading = false }
         
+        // Add loading message
+        await MainActor.run {
+            chatMessages.append(ChatMessage(isUser: false, text: "🌱 Generating a vegan recipe based on your groceries and preferences using AI..."))
+        }
+        
         do {
+            print("🍳 Generating recipe with LLM (generateRecipes)...")
+            print("   User ID:", userId)
             let recipe = try await apiClient.generateRecipe(userId: userId)
-            let message = ChatMessage(isUser: false, text: "Here's a recipe for you!", recipe: recipe)
-            chatMessages.append(message)
+            print("✅ Recipe generated:", recipe.title)
+            print("   Instructions length:", recipe.instructions.count, "characters")
+            await MainActor.run {
+                let message = ChatMessage(isUser: false, text: "Here's a personalized vegan recipe for you! 🎉", recipe: recipe)
+                chatMessages.append(message)
+            }
         } catch {
+            print("❌ Recipe generation error: \(error)")
             errorMessage = "Failed to generate recipe: \(error.localizedDescription)"
-            chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't generate a recipe right now. Please try again."))
+            await MainActor.run {
+                chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't generate a recipe right now. Please try again."))
+            }
         }
     }
     
     func veganizeRecipe(inputText: String) async {
-        guard let userId = userProfile?.id else { return }
+        guard let userId = userProfile?.id else {
+            await MainActor.run {
+                chatMessages.append(ChatMessage(isUser: false, text: "Please complete onboarding first to veganize recipes."))
+            }
+            return
+        }
         isLoading = true
         defer { isLoading = false }
         
+        // Add user message with the recipe they want to veganize
+        await MainActor.run {
+            chatMessages.append(ChatMessage(isUser: true, text: inputText))
+        }
+        
+        // Add loading message
+        await MainActor.run {
+            chatMessages.append(ChatMessage(isUser: false, text: "✨ Analyzing and veganizing your recipe with AI..."))
+        }
+        
         do {
+            print("🌿 Veganizing recipe with LLM (extractIngredients + rewriteRecipeSteps)...")
+            print("   User ID:", userId)
+            print("   Recipe text length:", inputText.count, "characters")
             let recipe = try await apiClient.veganizeRecipe(userId: userId, inputText: inputText)
-            let message = ChatMessage(isUser: false, text: "Here's your veganized recipe!", recipe: recipe)
-            chatMessages.append(message)
+            print("✅ Recipe veganized:", recipe.title)
+            print("   Instructions length:", recipe.instructions.count, "characters")
+            await MainActor.run {
+                let message = ChatMessage(isUser: false, text: "Here's your veganized recipe! 🌱✨", recipe: recipe)
+                chatMessages.append(message)
+            }
         } catch {
+            print("❌ Recipe veganization error: \(error)")
             errorMessage = "Failed to veganize recipe: \(error.localizedDescription)"
-            chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't veganize that recipe. Please try again."))
+            await MainActor.run {
+                chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't veganize that recipe. Please try again."))
+            }
         }
     }
     
@@ -248,9 +303,14 @@ class SproutViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
+            print("🧾 Scanning receipt with LLM...")
             let items = try await apiClient.scanReceipt(image: image, userId: userId)
-            groceryItems.append(contentsOf: items)
+            print("✅ Receipt scanned:", items.count, "items found")
+            await MainActor.run {
+                groceryItems.append(contentsOf: items)
+            }
         } catch {
+            print("❌ Receipt scan error: \(error)")
             errorMessage = "Failed to scan receipt: \(error.localizedDescription)"
         }
     }
@@ -280,9 +340,14 @@ class SproutViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
+            print("📸 Scanning menu with LLM...")
             let response = try await apiClient.scanMenu(image: image, userId: userId)
-            scannedMenu = response.dishes
+            print("✅ Menu scanned:", response.dishes.count, "dishes found")
+            await MainActor.run {
+                scannedMenu = response.dishes
+            }
         } catch {
+            print("❌ Menu scan error: \(error)")
             errorMessage = "Failed to scan menu: \(error.localizedDescription)"
         }
     }

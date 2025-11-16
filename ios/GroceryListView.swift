@@ -8,6 +8,9 @@ struct GroceryListView: View {
     
     @State private var newItemName: String = ""
     @State private var selectedCategory: GroceryCategory = .produce
+    @State private var showingReceiptScanner = false
+    @State private var receiptImage: UIImage?
+    @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
     
     private var trimmedItemName: String {
         newItemName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -71,7 +74,7 @@ struct GroceryListView: View {
                         // Quick scan button
                         HStack(spacing: 12) {
                             Button {
-                                // Scan Receipt action placeholder
+                                showingReceiptScanner = true
                             } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "doc.text.viewfinder")
@@ -125,6 +128,20 @@ struct GroceryListView: View {
                     } label: {
                         Image(systemName: "star.fill")
                             .foregroundColor(.sproutYellow)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingReceiptScanner) {
+                ImagePicker(image: $receiptImage, sourceType: sourceType)
+            }
+            .onChange(of: receiptImage) { newImage in
+                if let image = newImage {
+                    Task {
+                        await vm.scanReceipt(image: image)
+                        // Show success message if items were added
+                        if !vm.groceryItems.isEmpty {
+                            receiptImage = nil // Clear after scanning
+                        }
                     }
                 }
             }

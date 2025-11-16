@@ -159,18 +159,35 @@ struct ScanView: View {
                                         // Menu results
                                         VStack(alignment: .leading, spacing: 20) {
                                             HStack {
-                                                Image(systemName: "fork.knife")
+                                                Image(systemName: "checkmark.seal.fill")
                                                     .font(.title3)
                                                     .foregroundColor(.sproutGreen)
-                                                Text("Menu Results")
+                                                Text("Menu Analysis Results")
                                                     .font(.system(size: 22, weight: .bold, design: .rounded))
                                                 Spacer()
                                             }
+                                            
+                                            Text("Found \(vm.scannedMenu.count) dish\(vm.scannedMenu.count == 1 ? "" : "es")")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
                                             
                                             VStack(spacing: 16) {
                                                 ForEach(vm.scannedMenu) { dish in
                                                     MenuDishRow(dish: dish)
                                                 }
+                                            }
+                                            
+                                            Button {
+                                                selectedImage = nil
+                                                vm.scannedMenu = []
+                                            } label: {
+                                                Text("Scan Another Menu")
+                                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                                    .foregroundColor(.sproutGreen)
+                                                    .frame(maxWidth: .infinity)
+                                                    .padding(.vertical, 12)
+                                                    .background(Color.sproutGreen.opacity(0.1))
+                                                    .cornerRadius(12)
                                             }
                                         }
                                         .padding(24)
@@ -263,6 +280,10 @@ struct ScanView: View {
                 if let image = newImage, scanMode == .menu {
                     Task {
                         await vm.scanMenu(image: image)
+                        // Clear image after scanning to allow re-scan
+                        if !vm.scannedMenu.isEmpty {
+                            selectedImage = nil
+                        }
                     }
                 }
             }
