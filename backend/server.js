@@ -24,6 +24,7 @@ dotenv.config();
 // Connect to MongoDB
 try {
   await connectDB(); // connect to MongoDB
+  console.log("✅ MongoDB connection successful");
 } catch (err) {
   console.error("❌ Failed to connect to MongoDB:", err.message);
   console.error("   Make sure MongoDB is running and MONGO_URI is correct in .env file");
@@ -31,6 +32,7 @@ try {
 }
 
 const app = express();
+console.log("✅ Express app created");
 
 // CORS configuration - allow all origins for development
 app.use(cors({
@@ -54,18 +56,26 @@ app.get("/", (req, res) => res.json({ ok: true, msg: "Veganify backend (Albert f
 
 // Register routes
 // Note: More specific routes should be registered before general ones
-app.use("/scan/ingredients", scanIngredientsRoutes);
-app.use("/scan/menu", scanMenuRoutes);
-app.use("/recipes/veganize", veganizeRoutes); // Must come before /recipes
-app.use("/recipes/from-ingredients", cookRoutes);
-app.use("/recipes", recipesRoutes); // General recipes routes
-app.use("/impact", impactRoutes);
-app.use("/ai", aiAskRoutes); // <-- This enables POST /ai/ask
-app.use("/profile", profileRoutes);
-app.use("/onboarding", onboardingRoutes);
-app.use("/home", homeRoutes);
-app.use("/progress", progressRoutes);
-app.use("/grocery-list", groceryListRoutes);
+try {
+  console.log("📋 Registering routes...");
+  app.use("/scan/ingredients", scanIngredientsRoutes);
+  app.use("/scan/menu", scanMenuRoutes);
+  app.use("/recipes/veganize", veganizeRoutes); // Must come before /recipes
+  app.use("/recipes/from-ingredients", cookRoutes);
+  app.use("/recipes", recipesRoutes); // General recipes routes
+  app.use("/impact", impactRoutes);
+  app.use("/ai", aiAskRoutes); // <-- This enables POST /ai/ask
+  app.use("/profile", profileRoutes);
+  app.use("/onboarding", onboardingRoutes);
+  app.use("/home", homeRoutes);
+  app.use("/progress", progressRoutes);
+  app.use("/grocery-list", groceryListRoutes);
+  console.log("✅ All routes registered successfully");
+} catch (err) {
+  console.error("❌ Error registering routes:", err);
+  console.error(err.stack);
+  process.exit(1);
+}
 
 // Basic error handler
 app.use((err, req, res, next) => {
@@ -76,10 +86,19 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 4000;
 
 // Start server with keep-alive settings
-const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`✅ Server listening on http://localhost:${PORT}`);
-  console.log(`✅ Server also accessible on http://127.0.0.1:${PORT}`);
-});
+let server;
+try {
+  server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`✅ Server listening on http://localhost:${PORT}`);
+    console.log(`✅ Server also accessible on http://127.0.0.1:${PORT}`);
+    console.log(`✅ Server ready to accept connections!`);
+    console.log(`🌐 Test in browser: http://localhost:${PORT}`);
+  });
+} catch (err) {
+  console.error("❌ Failed to start server:", err);
+  console.error(err.stack);
+  process.exit(1);
+}
 
 // Configure server to keep connections alive
 server.keepAliveTimeout = 65000; // 65 seconds
