@@ -14,7 +14,6 @@ struct RootView: View {
             if !hasCompletedOnboarding {
                 OnboardingView()
                     .onAppear {
-                        // Check if profile exists
                         Task {
                             await vm.loadProfile()
                             if vm.userProfile != nil {
@@ -32,14 +31,17 @@ struct RootView: View {
                         }
                         .tag(SproutTab.home)
                     
-                    ScanView()
-                        .environmentObject(vm)
-                        .tabItem {
-                            Image(systemName: "camera.viewfinder")
-                            Text("Scan")
-                        }
-                        .tag(SproutTab.scan)
-                    
+                    // Pass userId to ScanView
+                    if let userId = vm.userProfile?._id {
+                        ScanView(userId: userId)
+                            .environmentObject(vm)
+                            .tabItem {
+                                Image(systemName: "camera.viewfinder")
+                                Text("Scan")
+                            }
+                            .tag(SproutTab.scan)
+                    }
+
                     CookView()
                         .environmentObject(vm)
                         .tabItem {
@@ -75,4 +77,3 @@ struct RootView: View {
         }
     }
 }
-
