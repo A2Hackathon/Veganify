@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - ViewModel
-
 @MainActor
 class SproutViewModel: ObservableObject {
     @Published var userProfile: UserProfile?
@@ -23,7 +21,7 @@ class SproutViewModel: ObservableObject {
     // Scan data
     @Published var scannedIngredients: [IngredientClassification] = []
     @Published var scannedMenu: [MenuDish] = []
-    
+        
     private let apiClient = APIClient.shared
     
     init() {
@@ -227,20 +225,31 @@ class SproutViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Scan
     
-    func scanIngredients(image: UIImage) async {
-        guard let userId = userProfile?.id else { return }
+    func scanIngredients(imageData: Data) async {
         isLoading = true
         defer { isLoading = false }
-        
+
         do {
-            let response = try await apiClient.scanIngredients(image: image, userId: userId)
-            scannedIngredients = response.ingredients
+            // Send image directly to backend
+            let response = try await APIService.shared.scanIngredients(imageData: imageData, userID: currentUserID)
+
+            // Map backend results into your local model
+            scannedIngredients = response.ingredients.map { item in
+                IngredientClassification(
+                    id: UUID().uuidString,
+                    name: item.name,          // or item.original depending on your backend response
+                    status: item.allowed == "Allowed" ? .allowed : .notAllowed,
+                    reason: item.reason ?? "Scanned from receipt"
+                )
+            }
+
         } catch {
+            print("Error scanning ingredients:", error)
             errorMessage = "Failed to scan ingredients: \(error.localizedDescription)"
         }
     }
+
     
     func scanMenu(image: UIImage) async {
         guard let userId = userProfile?.id else { return }
@@ -255,13 +264,16 @@ class SproutViewModel: ObservableObject {
         }
     }
     
-    func getAlternativeProduct(productType: String, context: String?) async -> [String] {
-        guard let userId = userProfile?.id else { return [] }
+    func getAlternativeProduct(productType: String, context: String) async -> [String] {
         do {
-            let response = try await apiClient.getAlternativeProduct(userId: userId, productType: productType, context: context)
-            return response.suggestions
+            let response = try await APIService.shared.analyzeIngredient(
+                ingredient: productType,
+                context: context,
+                userID: currentUserID
+            )
+            return response.suggestions  // array of substitutions from backend
         } catch {
-            errorMessage = "Failed to get alternatives: \(error.localizedDescription)"
+            print("Error fetching alternatives:", error)
             return []
         }
     }

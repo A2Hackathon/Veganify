@@ -1,6 +1,5 @@
 import SwiftUI
 
-// MARK: - Scan View
 
 struct ScanView: View {
     @EnvironmentObject var vm: SproutViewModel
