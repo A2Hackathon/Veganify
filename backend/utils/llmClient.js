@@ -121,6 +121,81 @@ function extractCleanJSON(text) {
 }
 
 //
+// Fallback ingredient analyzer when LLM fails
+//
+function getFallbackAnalysis(ingredient, dietLevel) {
+  const ingredientLower = ingredient.toLowerCase().trim();
+  const diet = dietLevel?.toLowerCase() || "vegan";
+  
+  // Common meat keywords
+  const meatKeywords = ["meat", "beef", "pork", "chicken", "turkey", "lamb", "veal", "duck", "bacon", "sausage", "ham", "steak"];
+  // Common seafood keywords
+  const seafoodKeywords = ["fish", "shrimp", "crab", "lobster", "salmon", "tuna", "cod", "shellfish", "scallops", "mussels"];
+  // Common dairy keywords
+  const dairyKeywords = ["milk", "cheese", "butter", "cream", "yogurt", "sour cream", "whey", "casein"];
+  // Common egg keywords
+  const eggKeywords = ["egg", "eggs", "mayonnaise", "mayo"];
+  
+  let isNotAllowed = false;
+  let suggestions = [];
+  let reason = "";
+  
+  // Check for meat
+  if (meatKeywords.some(keyword => ingredientLower.includes(keyword))) {
+    isNotAllowed = true;
+    reason = "Contains meat products";
+    if (diet === "vegan") {
+      suggestions = ["tofu", "tempeh", "seitan", "jackfruit", "mushrooms", "lentils"];
+    } else if (diet === "vegetarian") {
+      suggestions = ["tofu", "tempeh", "seitan", "mushrooms", "lentils"];
+    }
+  }
+  // Check for seafood
+  else if (seafoodKeywords.some(keyword => ingredientLower.includes(keyword))) {
+    isNotAllowed = true;
+    reason = "Contains seafood";
+    if (diet === "vegan") {
+      suggestions = ["tofu", "tempeh", "jackfruit", "hearts of palm", "mushrooms"];
+    } else if (diet === "vegetarian") {
+      suggestions = ["tofu", "tempeh", "mushrooms"];
+    }
+  }
+  // Check for dairy
+  else if (dairyKeywords.some(keyword => ingredientLower.includes(keyword))) {
+    isNotAllowed = true;
+    reason = "Contains dairy products";
+    if (diet === "vegan") {
+      if (ingredientLower.includes("milk")) {
+        suggestions = ["almond milk", "soy milk", "oat milk", "coconut milk"];
+      } else if (ingredientLower.includes("cheese")) {
+        suggestions = ["nutritional yeast", "vegan cheese", "cashew cheese"];
+      } else if (ingredientLower.includes("butter")) {
+        suggestions = ["vegan butter", "coconut oil", "olive oil"];
+      } else if (ingredientLower.includes("cream")) {
+        suggestions = ["coconut cream", "soy cream", "cashew cream"];
+      } else {
+        suggestions = ["vegan alternatives"];
+      }
+    }
+  }
+  // Check for eggs
+  else if (eggKeywords.some(keyword => ingredientLower.includes(keyword))) {
+    isNotAllowed = true;
+    reason = "Contains eggs";
+    if (diet === "vegan") {
+      suggestions = ["flax egg (1 tbsp flax + 3 tbsp water)", "chia egg", "applesauce", "silken tofu"];
+    }
+  }
+  
+  return {
+    ingredient: ingredient,
+    allowed: isNotAllowed ? "NotAllowed" : "Ambiguous",
+    reason: reason || "Unable to analyze - please check manually",
+    suggestions: suggestions
+  };
+}
+
+//
 // 3. Dietary check
 //
 export async function isAllowedForUser(userPrefs, ingredientTags) {
@@ -178,35 +253,48 @@ For "NotAllowed" ingredients, include at least 2-3 substitute suggestions in the
       const parsed = JSON.parse(cleaned);
       console.log(`✅ isAllowedForUser: Analyzed ${ingredientTags.length} ingredients, got ${parsed.length} results`);
       
-      return parsed.map(item => ({
-        ingredient: item.ingredient || "",
-        allowed: item.allowed || "Ambiguous",
-        reason: item.reason || "",
-        suggestions: Array.isArray(item.suggestions) ? item.suggestions : []
-      }));
+      return parsed.map(item => {
+        const allowed = item.allowed || "Ambiguous";
+        let suggestions = Array.isArray(item.suggestions) ? item.suggestions : [];
+        
+        // If ingredient is NotAllowed but has no suggestions, use fallback
+        if (allowed === "NotAllowed" && suggestions.length === 0) {
+          console.log(`⚠️ No suggestions provided for "${item.ingredient}", using fallback`);
+          const fallback = getFallbackAnalysis(item.ingredient || "", dietLevel);
+          suggestions = fallback.suggestions;
+        }
+        
+        return {
+          ingredient: item.ingredient || "",
+          allowed: allowed,
+          reason: item.reason || "",
+          suggestions: suggestions
+        };
+      });
     } catch (err) {
       console.error("❌ Failed to parse JSON from model");
       console.error("RAW OUTPUT:\n", raw);
       console.error("CLEANED:\n", cleaned);
+      console.error("⚠️ Using fallback analysis due to JSON parsing error");
 
-      // fallback
-      return ingredientTags.map((tag) => ({
-        ingredient: tag,
-        allowed: "Ambiguous",
-        reason: "Fallback — invalid JSON returned by model",
-        suggestions: []
-      }));
+      // Use fallback analysis for each ingredient
+      return ingredientTags.map((tag) => {
+        const fallback = getFallbackAnalysis(tag, dietLevel);
+        console.log(`📋 Fallback for "${tag}": ${fallback.allowed} - ${fallback.reason}`);
+        return fallback;
+      });
     }
   } catch (err) {
     console.error("❌ isAllowedForUser ERROR:", err);
     console.error("Error details:", err.message);
+    console.error("⚠️ Using fallback analysis for ingredients");
 
-    return ingredientTags.map((tag) => ({
-      ingredient: tag,
-      allowed: "Ambiguous",
-      reason: "System error",
-      suggestions: []
-    }));
+    // Use fallback analysis for each ingredient
+    return ingredientTags.map((tag) => {
+      const fallback = getFallbackAnalysis(tag, dietLevel);
+      console.log(`📋 Fallback for "${tag}": ${fallback.allowed} - ${fallback.reason}`);
+      return fallback;
+    });
   }
 }
 
@@ -214,43 +302,11 @@ For "NotAllowed" ingredients, include at least 2-3 substitute suggestions in the
 // 4. Answer with context
 //
 export async function answerWithContext(userContext, userQuestion) {
-  const recipeKeywords = /make|create|recipe|cook|prepare|how to make|show me|give me|with|and/i;
-  const ingredientPattern = /(pasta|broccoli|rice|tofu|chicken|beef|vegetables?|ingredients?)/i;
-  const isRecipeRequest = recipeKeywords.test(userQuestion) || 
-                          (ingredientPattern.test(userQuestion) && userQuestion.split(/\s+/).length <= 5);
+  const systemPrompt = `You are a friendly vegan cooking assistant named Sprout. You help users with vegan cooking tips, dietary questions, and general cooking advice. Be conversational, helpful, and enthusiastic about plant-based cooking. 
+
+IMPORTANT: Do NOT generate full recipes. Instead, provide helpful tips, suggestions, and guidance. If users ask for recipes, politely direct them to use the recipe generation features in the app (like "Cook With This" which uses their grocery list).`;
   
-  const systemPrompt = `You are a friendly vegan cooking assistant named Sprout. You help users with vegan recipes, cooking tips, and dietary questions. Be conversational, helpful, and enthusiastic about plant-based cooking. Always respond naturally to greetings and questions.`;
-
-  let userPrompt;
-  
-  if (isRecipeRequest) {
-    userPrompt = `The user is asking for a recipe. Generate a COMPLETE vegan recipe with the following format:
-
-RECIPE TITLE: [Creative, descriptive name]
-
-INGREDIENTS:
-- [ingredient 1] - [amount]
-- [ingredient 2] - [amount]
-- [continue for all ingredients]
-
-INSTRUCTIONS:
-1. [Step 1 - detailed cooking instruction]
-2. [Step 2 - detailed cooking instruction]
-3. [Continue with all steps]
-
-COOKING TIME: [estimated time]
-
-User's question: "${userQuestion}"
-
-User preferences:
-- Diet: ${userContext?.user?.dietLevel || "vegan"}
-- Dietary restrictions: ${userContext?.user?.extraForbiddenTags?.join(", ") || "none"}
-- Preferred cuisines: ${userContext?.user?.preferredCuisines?.join(", ") || "none"}
-- Cooking style: ${userContext?.user?.cookingStylePreferences?.join(", ") || "none"}
-
-IMPORTANT: Generate a FULL, DETAILED recipe with all ingredients and step-by-step instructions. Do NOT just list the ingredients. Include cooking methods, temperatures, times, and helpful tips. Make sure the recipe respects the user's dietary restrictions and preferences.`;
-  } else {
-    userPrompt = `User question: "${userQuestion}"
+  const userPrompt = `User question: "${userQuestion}"
 
 User context (for reference):
 - Diet: ${userContext?.user?.dietLevel || "vegan"}
@@ -260,8 +316,7 @@ User context (for reference):
 - Saved recipes: ${userContext?.recipes?.length || 0}
 - XP: ${userContext?.impact?.xp || 0}
 
-Answer the user's question naturally. If it's a greeting, respond warmly. If it's about cooking or recipes, use the context when helpful.`;
-  }
+Answer the user's question naturally. If it's a greeting, respond warmly. If they ask for a recipe or dish, politely explain that you can provide cooking tips and suggestions, but for full recipes they should use the "Cook With This" feature which generates recipes from their grocery list.`;
 
   try {
     console.log("Calling OpenAI API with model:", MODEL);

@@ -145,7 +145,26 @@ router.post("/", upload.single("image"), async (req, res) => {
         message: llmError?.message,
         stack: llmError?.stack
       });
-      throw new Error(`Ingredient analysis failed: ${llmError?.message || "Unknown error"}`);
+      console.error("⚠️ isAllowedForUser should not throw - using fallback");
+      // isAllowedForUser should always return a result (even fallback), so this shouldn't happen
+      // But if it does, return a basic response instead of throwing
+      checks = ingredients.map(ing => ({
+        ingredient: ing,
+        allowed: "Ambiguous",
+        reason: "Analysis unavailable - please try again",
+        suggestions: []
+      }));
+    }
+
+    // Ensure we have valid checks
+    if (!checks || !Array.isArray(checks) || checks.length === 0) {
+      console.warn("⚠️ No checks returned, creating fallback response");
+      checks = ingredients.map(ing => ({
+        ingredient: ing,
+        allowed: "Ambiguous",
+        reason: "Unable to analyze",
+        suggestions: []
+      }));
     }
 
     const formatted = checks.map((item) => ({
@@ -159,6 +178,7 @@ router.post("/", upload.single("image"), async (req, res) => {
     
     console.log(`📊 Scan complete: ${formatted.length} ingredients, all allowed: ${allAllowed}`);
     
+    // Always return a valid response structure
     res.json({
       success: true,
       isConsumable: allAllowed,
@@ -177,10 +197,13 @@ router.post("/", upload.single("image"), async (req, res) => {
       console.error("💡 Try: Restart the server or check if port conflicts exist");
     }
     
-    res.status(500).json({ 
-      error: "Failed to scan ingredients",
-      message: err.message,
-      details: process.env.NODE_ENV === "development" ? err.stack : undefined
+    // Instead of returning 500, return a valid response structure with error info
+    // This ensures the iOS app can always decode the response
+    res.status(200).json({ 
+      success: false,
+      isConsumable: false,
+      ingredients: [],
+      error: err.message || "Failed to scan ingredients"
     });
   }
 });
@@ -241,8 +264,38 @@ router.post("/text", async (req, res) => {
     };
 
     console.log(`🔍 Checking ${ingredientsList.length} ingredients against diet: ${prefs.dietLevel}`);
-    const checks = await isAllowedForUser(prefs, ingredientsList);
-    console.log(`✅ Got ${checks.length} check results`);
+    let checks;
+    try {
+      checks = await isAllowedForUser(prefs, ingredientsList);
+      console.log(`✅ Got ${checks.length} check results`);
+    } catch (llmError) {
+      console.error("❌ LLM API error:", llmError);
+      console.error("LLM Error details:", {
+        name: llmError?.name,
+        message: llmError?.message,
+        stack: llmError?.stack
+      });
+      console.error("⚠️ isAllowedForUser should not throw - this is unexpected");
+      // isAllowedForUser should always return a result (even fallback), so this shouldn't happen
+      // But if it does, return a basic response
+      checks = ingredientsList.map(ing => ({
+        ingredient: ing,
+        allowed: "Ambiguous",
+        reason: "Analysis unavailable",
+        suggestions: []
+      }));
+    }
+
+    // Ensure we have valid checks
+    if (!checks || !Array.isArray(checks) || checks.length === 0) {
+      console.warn("⚠️ No checks returned, creating fallback response");
+      checks = ingredientsList.map(ing => ({
+        ingredient: ing,
+        allowed: "Ambiguous",
+        reason: "Unable to analyze",
+        suggestions: []
+      }));
+    }
 
     const formatted = checks.map((item) => ({
       name: item.ingredient || "",
@@ -255,6 +308,7 @@ router.post("/text", async (req, res) => {
     
     console.log(`📊 Text analysis complete: ${formatted.length} ingredients, all allowed: ${allAllowed}`);
     
+    // Always return a valid response structure
     res.json({
       success: true,
       isConsumable: allAllowed,
@@ -265,9 +319,14 @@ router.post("/text", async (req, res) => {
     console.error("Error name:", err.name);
     console.error("Error message:", err.message);
     console.error("Error stack:", err.stack);
-    res.status(500).json({ 
-      error: "Failed to analyze ingredient text",
-      message: err.message 
+    
+    // Instead of returning 500, return a valid response structure with error info
+    // This ensures the iOS app can always decode the response
+    res.status(200).json({ 
+      success: false,
+      isConsumable: false,
+      ingredients: [],
+      error: err.message || "Failed to analyze ingredient text"
     });
   }
 });

@@ -44,7 +44,7 @@ struct CookView: View {
                                             print("🔘 Button pressed: Vegan Cooking Simplified")
                                             // Add user message showing they clicked the button
                                             vm.addUserChat("Generate a vegan recipe for me")
-                                            // Trigger AI recipe generation
+                                            // Trigger AI recipe generation from grocery list
                                             Task {
                                                 print("🚀 Starting recipe generation task...")
                                                 await vm.generateRecipe()
