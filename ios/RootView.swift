@@ -24,7 +24,7 @@ struct RootView: View {
                         .tag(SproutTab.home)
                     
                     // Only show Scan tab if we have a userId.
-                    // The 'else { EmptyView() }' ensures the TabView content type is consistent.
+                    // The 'else { EmptyView() }' resolves the generic inference issue.
                     if let userId = vm.userProfile?._id {
                         ScanView(userId: userId)
                             .tabItem {
@@ -33,7 +33,7 @@ struct RootView: View {
                             }
                             .tag(SproutTab.scan)
                     } else {
-                        EmptyView() // Fix for "Generic parameter R could not be inferred"
+                        EmptyView() // Fix is here!
                     }
                     
                     CookView()
