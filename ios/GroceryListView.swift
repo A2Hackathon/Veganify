@@ -42,7 +42,9 @@ struct GroceryListView: View {
                             
                             Button {
                                 if !newItemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    vm.addGroceryItem(name: newItemName, category: selectedCategory)
+                                    Task {
+                                        await vm.addGroceryItem(name: newItemName, category: selectedCategory.rawValue)
+                                    }
                                     newItemName = ""
                                 }
                             } label: {
