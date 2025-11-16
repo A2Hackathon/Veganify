@@ -143,14 +143,15 @@ struct DietaryRestrictionsEditorView: View {
     
     private func saveRestrictions() {
         Task {
-            guard var profile = vm.userProfile, let userId = profile.id else {
-                print("❌ Cannot save: No user profile or userId")
+            guard var profile = vm.userProfile else {
+                print("❌ Cannot save: No user profile")
                 await MainActor.run {
                     dismiss()
                 }
                 return
             }
             
+            let userId = profile.id
             profile.dietaryRestrictions = selectedRestrictions
             await vm.updateProfile(profile)
             
@@ -243,14 +244,15 @@ struct CuisinePreferencesEditorView: View {
     
     private func saveCuisines() {
         Task {
-            guard var profile = vm.userProfile, let userId = profile.id else {
-                print("❌ Cannot save: No user profile or userId")
+            guard var profile = vm.userProfile else {
+                print("❌ Cannot save: No user profile")
                 await MainActor.run {
                     dismiss()
                 }
                 return
             }
             
+            let userId = profile.id
             profile.cuisinePreferences = selectedCuisines
             await vm.updateProfile(profile)
             
@@ -342,14 +344,15 @@ struct CookingStyleEditorView: View {
     
     private func saveStyles() {
         Task {
-            guard var profile = vm.userProfile, let userId = profile.id else {
-                print("❌ Cannot save: No user profile or userId")
+            guard var profile = vm.userProfile else {
+                print("❌ Cannot save: No user profile")
                 await MainActor.run {
                     dismiss()
                 }
                 return
             }
             
+            let userId = profile.id
             profile.cookingStylePreferences = selectedStyles
             await vm.updateProfile(profile)
             
@@ -443,14 +446,15 @@ struct EatingStyleEditorView: View {
     private func saveStyle() {
         guard let style = selectedStyle else { return }
         Task {
-            guard var profile = vm.userProfile, let userId = profile.id else {
-                print("❌ Cannot save: No user profile or userId")
+            guard var profile = vm.userProfile else {
+                print("❌ Cannot save: No user profile")
                 await MainActor.run {
                     dismiss()
                 }
                 return
             }
             
+            let userId = profile.id
             profile.eatingStyle = style.rawValue
             await vm.updateProfile(profile)
             

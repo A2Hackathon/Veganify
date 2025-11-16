@@ -6,6 +6,7 @@ struct OnboardingView: View {
     @StateObject private var viewModel = OnboardingViewModel()
     @State private var currentStep = 0
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var sproutViewModel: SproutViewModel
     
     var body: some View {
         ZStack {
@@ -739,6 +740,13 @@ struct ReviewStep: View {
             await viewModel.completeOnboarding()
             // Only mark as completed if profile was successfully created
             if viewModel.isCompleted {
+                // Load the profile into the shared viewModel so settings can access it
+                if let userId = UserDefaults.standard.string(forKey: "currentUserId") {
+                    print("🔄 Loading profile into SproutViewModel after onboarding...")
+                    await sproutViewModel.loadProfile()
+                    print("✅ Profile loaded into SproutViewModel: \(sproutViewModel.userProfile != nil ? "Success" : "Failed")")
+                }
+                
                 await MainActor.run {
                     // Update @AppStorage by setting UserDefaults
                     UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
@@ -913,8 +921,9 @@ class OnboardingViewModel: ObservableObject {
             return
         }
         
+        // Create profile with temporary ID - backend will assign the real MongoDB ID
         let profile = UserProfile(
-            id: UUID().uuidString,
+            id: "", // Backend will assign the real ID
             userName: "User", // Will be updated later
             eatingStyle: eatingStyle.rawValue,
             dietaryRestrictions: data.dietaryRestrictions,

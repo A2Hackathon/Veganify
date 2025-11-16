@@ -10,6 +10,7 @@ struct SproutApp: App {
         WindowGroup {
             if !hasCompletedOnboarding {
                 OnboardingView()
+                    .environmentObject(viewModel)
                     .onAppear {
                         Task {
                             await viewModel.loadProfile()

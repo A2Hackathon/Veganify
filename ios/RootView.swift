@@ -13,6 +13,7 @@ struct RootView: View {
             if !hasCompletedOnboarding {
                 // Onboarding flow
                 OnboardingView()
+                    .environmentObject(vm)
             } else {
                 // Main app tabs
                 TabView(selection: $selectedTab) {
