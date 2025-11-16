@@ -1,39 +1,34 @@
-import mongoose from "mongoose";
+// models/Recipe.js
+// Recipe data structure definition (MongoDB/Mongoose removed - now using JSON storage)
+// This file is kept for reference only - actual storage is handled by RecipeStorage in utils/jsonStorage.js
 
-const recipeIngredientSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-    amount: { type: String },
-    unit: { type: String },
-  },
-  { _id: false }
-);
+/**
+ * Recipe data structure:
+ * {
+ *   _id: string,                    // Unique identifier
+ *   userId: string,                  // User ID (always Albert's ID)
+ *   title: string,                   // Recipe title
+ *   tags: string[],                  // Recipe tags
+ *   duration: string,                // Cooking duration
+ *   ingredients: RecipeIngredient[], // Array of ingredients
+ *   steps: string[],                 // Cooking steps
+ *   previewImageUrl: string,         // Image URL
+ *   originalPrompt: string,         // Original prompt used to generate recipe
+ *   type: "simplified" | "veganized", // Recipe type
+ *   substitutionMap: object,        // Map of ingredient substitutions (key-value pairs)
+ *   createdAt: string,              // ISO date string
+ *   updatedAt: string                // ISO date string
+ * }
+ * 
+ * RecipeIngredient structure:
+ * {
+ *   name: string,                    // Ingredient name
+ *   amount: string,                  // Amount (e.g., "1 cup")
+ *   unit: string                     // Unit (e.g., "cup")
+ * }
+ * 
+ * Note: All recipe operations should use RecipeStorage from utils/jsonStorage.js
+ * Example: const recipe = await RecipeStorage.findById(recipeId);
+ */
 
-const recipeSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-    title: { type: String, required: true },
-    tags: { type: [String], default: [] },
-    duration: { type: String, default: "" },
-    ingredients: { type: [recipeIngredientSchema], default: [] },
-    steps: { type: [String], default: [] },
-    previewImageUrl: { type: String, default: "" },
-    originalPrompt: { type: String },
-    type: {
-      type: String,
-      enum: ["simplified", "veganized"],
-      default: "simplified",
-    },
-    substitutionMap: {
-      type: Map,
-      of: String,
-      default: undefined,
-    },
-  },
-  { timestamps: true }
-);
-
-export default mongoose.model("Recipe", recipeSchema);
+// No exports - this file is for reference only

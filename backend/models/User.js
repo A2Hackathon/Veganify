@@ -1,40 +1,23 @@
-import mongoose from "mongoose";
+// models/User.js
+// User data structure definition (MongoDB/Mongoose removed - now using JSON storage)
+// This file is kept for reference only - actual storage is handled by UserStorage in utils/jsonStorage.js
 
-const userSchema = new mongoose.Schema({
-  name: { type: String },
-  dietLevel: {
-    type: String,
-    enum: [
-      "vegan",
-      "vegetarian",
-      "pescatarian",
-      "ovo",
-      "lacto",
-      "lacto_ovo",
-      "flexitarian",
-    ],
-    default: "flexitarian",
-  },
-  extraForbiddenTags: {
-    type: [String],
-    default: [],
-  },
-  preferredCuisines: {
-    type: [String],
-    default: [],
-  },
-  cookingStylePreferences: {
-    type: [String],
-    default: [],
-  },
-  sproutName: {
-    type: String,
-    default: "Albert",
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+/**
+ * User data structure:
+ * {
+ *   _id: string,                    // Unique identifier
+ *   id: string,                     // Alias for _id (for compatibility)
+ *   name: string,                    // User's name
+ *   dietLevel: "vegan" | "vegetarian" | "pescatarian" | "ovo" | "lacto" | "lacto_ovo" | "flexitarian",
+ *   extraForbiddenTags: string[],    // Additional dietary restrictions
+ *   preferredCuisines: string[],     // Preferred cuisine types
+ *   cookingStylePreferences: string[], // Preferred cooking styles
+ *   sproutName: string,             // Always "Albert" (single user system)
+ *   createdAt: string                // ISO date string
+ * }
+ * 
+ * Note: All user operations should use UserStorage from utils/jsonStorage.js
+ * Example: const user = await UserStorage.findOne({ sproutName: "Albert" });
+ */
 
-export default mongoose.model("User", userSchema);
+// No exports - this file is for reference only

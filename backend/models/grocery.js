@@ -1,27 +1,22 @@
-import mongoose from "mongoose";
+// models/grocery.js
+// Grocery data structure definition (MongoDB/Mongoose removed - now using JSON storage)
+// This file is kept for reference only - actual storage is handled by GroceryItemStorage in utils/jsonStorage.js
+// Note: This appears to be a duplicate/alternative to GroceryItem.js
 
-const grocerySchema = new mongoose.Schema({
-    userID: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true
-    },
-    name: { 
-        type: String, 
-        required: true 
-    },
-    category: {
-        type: String,
-        default: "Produce"
-    },
-    isChecked: {
-        type: Boolean,
-        default: false
-    },
-    boughtAt: {
-        type: Date,
-        default: Date.now
-    }
-});
+/**
+ * Grocery data structure (legacy/alternative format):
+ * {
+ *   _id: string,                    // Unique identifier
+ *   userID: string,                  // User ID (always Albert's ID)
+ *   name: string,                    // Item name
+ *   category: string,                // Item category (default: "Produce")
+ *   isChecked: boolean,              // Whether item is checked off (default: false)
+ *   boughtAt: string                 // ISO date string when item was bought
+ * }
+ * 
+ * Note: This model appears to be a legacy/duplicate of GroceryItem.
+ * All grocery operations should use GroceryItemStorage from utils/jsonStorage.js
+ * Example: const items = await GroceryItemStorage.find({ userId: albertId });
+ */
 
-export default mongoose.model("grocery", grocerySchema);
+// No exports - this file is for reference only

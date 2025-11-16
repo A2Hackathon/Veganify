@@ -1,9 +1,8 @@
 import express from "express";
 import multer from "multer";
 import Tesseract from "tesseract.js";
-import User from "../models/User.js";
+import { UserStorage } from "../utils/jsonStorage.js";
 import { answerWithContext } from "../utils/llmClient.js";
-import { toObjectId } from "../utils/objectIdHelper.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -11,13 +10,21 @@ const upload = multer({ dest: "uploads/" });
 // POST /scan/menu (image, returns MenuDish[])
 router.post("/", upload.single("image"), async (req, res) => {
   try {
-    const userId = req.query.userId || req.body.userId;
-    if (!userId) return res.status(400).json({ error: "userId required" });
     if (!req.file) return res.status(400).json({ error: "image required" });
 
-    const userObjectId = toObjectId(userId);
-    const user = await User.findById(userObjectId).lean();
-    if (!user) return res.status(404).json({ error: "User not found" });
+    // ALWAYS use the single Albert user
+    let user = await UserStorage.findOne({ sproutName: "Albert" });
+    if (!user) {
+      // Create Albert if it doesn't exist
+      user = await UserStorage.create({
+        name: "User",
+        dietLevel: "vegan",
+        extraForbiddenTags: [],
+        preferredCuisines: ["Chinese"],
+        cookingStylePreferences: ["Spicy"],
+        sproutName: "Albert",
+      });
+    }
 
     const result = await Tesseract.recognize(req.file.path, "eng");
     const text = result.data.text || "";
