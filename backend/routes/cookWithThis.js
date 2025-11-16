@@ -2,7 +2,7 @@
 import express from "express";
 import { generateRecipes } from "../utils/llmClient.js";
 import UserImpact from "../models/UserImpact.js";
-
+import Grocery from "../models/grocery.js";
 const router = express.Router();
 
 /**
@@ -14,9 +14,21 @@ const router = express.Router();
  * - Does NOT count as a meal
  * - Does NOT affect streak
  */
+
 router.post("/", async (req, res, next) => {
   try {
-    const { ingredients = [], user_id } = req.body;
+    const { user_id } = req.body;
+
+if (!user_id) {
+  return res.status(400).json({ error: "user_id is required to get groceries" });
+}
+
+// Get all groceries for this user
+const groceries = await Grocery.find({ userID: user_id }).lean();
+
+// Convert to ingredient names
+const ingredients = groceries.map(g => g.name);
+
 
     // generate 3 recipes
     const recipes = await generateRecipes(ingredients, 3);
