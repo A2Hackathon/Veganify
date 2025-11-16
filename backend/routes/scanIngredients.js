@@ -3,6 +3,7 @@ import multer from "multer";
 import Tesseract from "tesseract.js";
 import User from "../models/User.js";
 import { isAllowedForUser } from "../utils/llmClient.js";
+import { mapIngredientStatus } from "../utils/eatingStyleMapper.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -35,27 +36,25 @@ router.post('/', upload.single('image'), async (req, res) => {
         );
         console.log("✅ LLM returned results for", checkResults.length, "ingredients");
 
-        // Format for iOS - map to expected format
+        // Format for iOS - map to IngredientClassification format
         const formattedIngredients = checkResults.map(r => ({
             name: r.ingredient || r.name || "",
-            allowed: r.allowed || "Allowed",
-            reason: r.reason || r.reasons?.[0] || ""
+            status: mapIngredientStatus(r.allowed), // Map to "allowed" | "ambiguous" | "not_allowed"
+            reason: r.reason || "",
+            suggestions: r.suggestions || []
         }));
         
         res.json({ 
-            success: true, 
-            isConsumable: checkResults.every(r => r.allowed === 'Allowed'),
             ingredients: formattedIngredients 
         });
 
     } catch (err) {
-        console.error(err);
+        console.error("Scan ingredients error:", err);
         res.status(500).json({ success: false, error: "Internal server error" });
     }
 });
 
 // POST /scan/ingredients/text
-// Analyze ingredients from text input
 router.post("/text", async (req, res) => {
     try {
         const { userId, ingredients } = req.body;
@@ -77,16 +76,15 @@ router.post("/text", async (req, res) => {
         );
         console.log("✅ LLM returned results for", checkResults.length, "ingredients");
 
-        // Format for iOS - map to expected format
+        // Format for iOS - map to IngredientClassification format
         const formattedIngredients = checkResults.map(r => ({
             name: r.ingredient || r.name || "",
-            allowed: r.allowed || "Allowed",
-            reason: r.reason || r.reasons?.[0] || ""
+            status: mapIngredientStatus(r.allowed), // Map to "allowed" | "ambiguous" | "not_allowed"
+            reason: r.reason || "",
+            suggestions: r.suggestions || []
         }));
         
         res.json({ 
-            success: true, 
-            isConsumable: checkResults.every(r => r.allowed === 'Allowed'),
             ingredients: formattedIngredients 
         });
 
@@ -96,7 +94,7 @@ router.post("/text", async (req, res) => {
     }
 });
 
-// POST /scan/alternative-product
+// POST /scan/ingredients/alternative-product
 router.post("/alternative-product", async (req, res) => {
     try {
         const { userId, productType, context } = req.body;

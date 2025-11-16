@@ -4,7 +4,6 @@ import Tesseract from "tesseract.js";
 import User from "../models/User.js";
 import { isAllowedForUser } from "../utils/llmClient.js";
 
-
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
@@ -34,7 +33,7 @@ router.post('/', upload.single('image'), async (req, res) => {
             .map(line => line.replace(/[^a-zA-Z ]/g, "").trim())
             .filter(line => line.length > 0);
 
-        // Check each line as a possible ingredient 
+        // Check each line as a possible dish
         const results = [];
 
         console.log("🔍 Calling LLM (isAllowedForUser) for menu scan...");
@@ -45,11 +44,11 @@ router.post('/', upload.single('image'), async (req, res) => {
             results.push({
                 ingredient: line,
                 allowed: first.allowed,
-                reasons: first.reason || ""
+                reason: first.reason || ""
             });
         }
 
-        // Format for iOS
+        // Format for iOS MenuDish format
         const dishes = results.map(item => {
             let status = "suitable";
             if (item.allowed === "NotAllowed") {
@@ -59,8 +58,8 @@ router.post('/', upload.single('image'), async (req, res) => {
             }
             return {
                 name: item.ingredient,
-                status: status,
-                modificationSuggestion: item.allowed !== "Allowed" ? (item.reasons || "May need modifications") : null
+                status: status, // "suitable" | "modifiable" | "not_suitable"
+                modificationSuggestion: item.allowed !== "Allowed" ? (item.reason || "May need modifications") : null
             };
         });
         

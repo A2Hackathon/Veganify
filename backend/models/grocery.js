@@ -6,7 +6,18 @@ const grocerySchema = new mongoose.Schema({
         ref: "User",
         required: true
     },
-    name: { type: String, required: true },
+    name: { 
+        type: String, 
+        required: true 
+    },
+    category: {
+        type: String,
+        default: "Produce"
+    },
+    isChecked: {
+        type: Boolean,
+        default: false
+    },
     boughtAt: {
         type: Date,
         default: Date.now
@@ -14,4 +25,3 @@ const grocerySchema = new mongoose.Schema({
 });
 
 export default mongoose.model("grocery", grocerySchema);
- 

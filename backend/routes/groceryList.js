@@ -17,13 +17,13 @@ router.get("/", async (req, res) => {
 
     const groceries = await Grocery.find({ userID: userId });
 
-    // Map to iOS GroceryItem format
+    // Map to iOS GroceryItem format - exact match to Swift model
     const items = groceries.map(g => ({
       id: g._id.toString(),
       name: g.name,
-      category: "Produce", // Default category, can be enhanced
-      isChecked: false,
-      userId: g.userID.toString()
+      category: g.category || "Produce",
+      isChecked: g.isChecked || false,
+      userId: g.userID?.toString() || null
     }));
 
     res.json(items);
@@ -44,21 +44,67 @@ router.post("/", async (req, res) => {
 
     const grocery = await Grocery.create({
       userID: userId,
-      name: name
+      name: name,
+      category: category || "Produce",
+      isChecked: false
     });
 
+    // Return in iOS GroceryItem format
     const item = {
       id: grocery._id.toString(),
       name: grocery.name,
-      category: category || "Produce",
-      isChecked: false,
-      userId: grocery.userID.toString()
+      category: grocery.category || "Produce",
+      isChecked: grocery.isChecked || false,
+      userId: grocery.userID?.toString() || null
     };
 
     res.json(item);
   } catch (err) {
     console.error("Add grocery item error:", err);
     res.status(500).json({ error: "Failed to add grocery item" });
+  }
+});
+
+// PATCH /grocery-list/:id (for toggling checked status)
+router.patch("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isChecked } = req.body;
+
+    const grocery = await Grocery.findById(id);
+    if (!grocery) {
+      return res.status(404).json({ error: "Grocery item not found" });
+    }
+
+    if (isChecked !== undefined) {
+      grocery.isChecked = isChecked;
+      await grocery.save();
+    }
+
+    const item = {
+      id: grocery._id.toString(),
+      name: grocery.name,
+      category: grocery.category || "Produce",
+      isChecked: grocery.isChecked || false,
+      userId: grocery.userID?.toString() || null
+    };
+
+    res.json(item);
+  } catch (err) {
+    console.error("Update grocery item error:", err);
+    res.status(500).json({ error: "Failed to update grocery item" });
+  }
+});
+
+// DELETE /grocery-list/:id
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Grocery.findByIdAndDelete(id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Delete grocery item error:", err);
+    res.status(500).json({ error: "Failed to delete grocery item" });
   }
 });
 
@@ -88,15 +134,17 @@ router.post("/scan-fridge", upload.single("image"), async (req, res) => {
     for (const line of lines) {
       const grocery = await Grocery.create({
         userID: userId,
-        name: line
+        name: line,
+        category: "Produce",
+        isChecked: false
       });
 
       items.push({
         id: grocery._id.toString(),
         name: grocery.name,
-        category: "Produce",
+        category: grocery.category || "Produce",
         isChecked: false,
-        userId: grocery.userID.toString()
+        userId: grocery.userID?.toString() || null
       });
     }
 
@@ -134,15 +182,17 @@ router.post("/scan-receipt", upload.single("image"), async (req, res) => {
     for (const line of lines) {
       const grocery = await Grocery.create({
         userID: userId,
-        name: line
+        name: line,
+        category: "Produce",
+        isChecked: false
       });
 
       items.push({
         id: grocery._id.toString(),
         name: grocery.name,
-        category: "Produce",
+        category: grocery.category || "Produce",
         isChecked: false,
-        userId: grocery.userID.toString()
+        userId: grocery.userID?.toString() || null
       });
     }
 
@@ -154,4 +204,3 @@ router.post("/scan-receipt", upload.single("image"), async (req, res) => {
 });
 
 export default router;
-

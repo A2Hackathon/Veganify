@@ -1,11 +1,11 @@
 import express from "express";
 import User from "../models/User.js";
 import UserImpact from "../models/UserImpact.js";
+import { backendToSwiftDietLevel, swiftToBackendDietLevel } from "../utils/eatingStyleMapper.js";
 
 const router = express.Router();
 
-// GET /profile
-// Query: userId (optional, for now we'll use first user or create one)
+// GET /profile?userId=...
 router.get("/", async (req, res) => {
   try {
     const userId = req.query.userId;
@@ -31,11 +31,11 @@ router.get("/", async (req, res) => {
     const xpInCurrentLevel = (impact.xp || 0) % 100;
     const xpToNextLevel = 100 - xpInCurrentLevel;
 
-    // Map to iOS UserProfile format
+    // Map to iOS UserProfile format - convert backend dietLevel to Swift format
     const profile = {
       id: user._id.toString(),
       userName: user.name || "User",
-      eatingStyle: user.dietLevel || "vegan",
+      eatingStyle: backendToSwiftDietLevel(user.dietLevel), // Convert backend to Swift
       dietaryRestrictions: user.extraForbiddenTags || [],
       cuisinePreferences: user.preferredCuisines || [],
       cookingStylePreferences: user.cookingStylePreferences || [],
@@ -70,9 +70,9 @@ router.patch("/", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Update user fields
+    // Update user fields - convert Swift eatingStyle to backend dietLevel
     if (userName !== undefined) user.name = userName;
-    if (eatingStyle !== undefined) user.dietLevel = eatingStyle;
+    if (eatingStyle !== undefined) user.dietLevel = swiftToBackendDietLevel(eatingStyle); // Convert Swift to backend
     if (dietaryRestrictions !== undefined) user.extraForbiddenTags = dietaryRestrictions;
     if (cuisinePreferences !== undefined) user.preferredCuisines = cuisinePreferences;
     if (cookingStylePreferences !== undefined) user.cookingStylePreferences = cookingStylePreferences;
@@ -101,7 +101,7 @@ router.patch("/", async (req, res) => {
     const profile = {
       id: user._id.toString(),
       userName: user.name || "User",
-      eatingStyle: user.dietLevel || "vegan",
+      eatingStyle: backendToSwiftDietLevel(user.dietLevel), // Convert back to Swift format
       dietaryRestrictions: user.extraForbiddenTags || [],
       cuisinePreferences: user.preferredCuisines || [],
       cookingStylePreferences: user.cookingStylePreferences || [],
@@ -132,13 +132,13 @@ router.post("/parse-restrictions", async (req, res) => {
     // Simple parsing - extract common dietary restrictions from text
     const restrictions = [];
     const commonRestrictions = [
-      "gluten", "dairy", "nuts", "peanuts", "soy", "eggs", 
-      "fish", "shellfish", "sesame", "sulfites"
+      "gluten-free", "nut-free", "soy-free", "dairy-free", "egg-free", 
+      "shellfish-free", "sesame-free", "no honey"
     ];
 
     const lowerText = text.toLowerCase();
     for (const restriction of commonRestrictions) {
-      if (lowerText.includes(restriction)) {
+      if (lowerText.includes(restriction.replace("-", "")) || lowerText.includes(restriction)) {
         restrictions.push(restriction);
       }
     }
@@ -151,4 +151,3 @@ router.post("/parse-restrictions", async (req, res) => {
 });
 
 export default router;
-

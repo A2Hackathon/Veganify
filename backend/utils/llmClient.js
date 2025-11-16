@@ -11,11 +11,11 @@ const MODEL = "google/gemini-2.5-flash";
 //
 // 1. Extract ingredients
 //
-async function extractIngredients(recipeText) {
+export async function extractIngredients(recipeText) {
     const prompt = `
 Extract ALL ingredients from the recipe below.
 Return ONLY a list with ONE ingredient per line.
-No numbering. No explanations.
+No numbering. No explanations. Remove bullet points or dashes.
 
 Recipe:
 """
@@ -32,11 +32,11 @@ ${recipeText}
             ],
         });
 
-        const text = response.choices[0].message.content.trim();
-
+        const text = response.choices?.[0]?.message?.content?.trim() || "";
+        
         return text
             .split("\n")
-            .map(x => x.trim())
+            .map(x => x.replace(/^[-•]\s*/, "").trim())
             .filter(Boolean);
 
     } catch (err) {
@@ -45,20 +45,19 @@ ${recipeText}
     }
 }
 
-
-
 //
 // 2. Rewrite recipe steps with substitutions
 //
-async function rewriteRecipeSteps(subs, originalRecipe) {
+export async function rewriteRecipeSteps(subs, originalRecipe) {
     let instructions = subs
         .filter(s => s.substitute)
         .map(s => `- Replace "${s.original}" with "${s.substitute}".`)
         .join("\n");
 
     const prompt = `
-Rewrite the following recipe using these substitutions:
+You are rewriting a cooking recipe.
 
+Substitutions (apply all):
 ${instructions}
 
 Original Recipe:
@@ -66,7 +65,11 @@ Original Recipe:
 ${originalRecipe}
 """
 
-Return ONLY the rewritten recipe text.
+Rules:
+- Keep the original structure (steps / paragraphs).
+- Just swap ingredients and adjust wording where needed.
+- Do NOT add explanations or notes.
+- Return ONLY the rewritten recipe text, nothing else.
 `;
 
     try {
@@ -78,44 +81,32 @@ Return ONLY the rewritten recipe text.
             ],
         });
 
-        return response.choices[0].message.content.trim();
+        const content = response.choices?.[0]?.message?.content;
+        return (typeof content === "string" ? content : "").trim() || originalRecipe;
     } catch (err) {
         console.error("rewriteRecipeSteps error:", err);
         return originalRecipe;
     }
 }
 
-
-
 //
 // 3. Dietary check
 //
-async function isAllowedForUser(userPrefs, ingredientTags) {
-    //
-    // Helper: clean and extract JSON safely
-    //
+export async function isAllowedForUser(userPrefs, ingredientTags) {
     function extractCleanJSON(text) {
         if (!text) return null;
 
         let cleaned = text.trim();
-
-        // Remove ```json and ``` markers
         cleaned = cleaned
             .replace(/```json/gi, "")
             .replace(/```/g, "")
             .trim();
 
-        // Extract JSON array or object
         const match = cleaned.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
         if (match) return match[0];
-
-        // If no match, return entire text
         return cleaned;
     }
 
-    //
-    // Prompt (kept EXACTLY as you requested)
-    //
     const prompt = `
 User dietary restrictions:
 - Level: ${userPrefs.dietLevel}
@@ -126,17 +117,17 @@ ${ingredientTags.join(", ")}
 
 Return STRICT JSON:
 [
-  { "ingredient": "", "allowed": "Allowed|NotAllowed|Ambiguous", "reason": "" }
+  { "ingredient": "", "allowed": "Allowed|NotAllowed|Ambiguous", "reason": "", "suggestions": [] }
 ]
 `;
 
     try {
         const response = await client.chat.completions.create({
-        model: MODEL,
-        messages: [{ role: "user", content: prompt }],
+            model: MODEL,
+            messages: [{ role: "user", content: prompt }],
         });
 
-        const raw = response.choices[0].message.content;
+        const raw = response.choices?.[0]?.message?.content;
         const cleaned = extractCleanJSON(raw);
 
         try {
@@ -146,31 +137,28 @@ Return STRICT JSON:
             console.error("RAW OUTPUT:\n", raw);
             console.error("CLEANED:\n", cleaned);
 
-            // graceful fallback
             return ingredientTags.map(tag => ({
                 ingredient: tag,
                 allowed: "Ambiguous",
-                reason: "Fallback — invalid JSON returned by model"
+                reason: "Fallback — invalid JSON returned by model",
+                suggestions: []
             }));
         }
     } catch (err) {
         console.error("❌ isAllowedForUser ERROR:", err);
-
-        // system fallback
         return ingredientTags.map(tag => ({
             ingredient: tag,
             allowed: "Ambiguous",
-            reason: "System error"
+            reason: "System error",
+            suggestions: []
         }));
     }
 }
 
-
-
 //
 // 4. Answer with context
 //
-async function answerWithContext(userContext, userQuestion) {
+export async function answerWithContext(userContext, userQuestion) {
     const prompt = `
 You are an AI assistant with access to the user's data.
 
@@ -195,7 +183,10 @@ Rules:
             ],
         });
 
-        return response.choices[0].message.content.trim();
+        const choice = response.choices?.[0]?.message?.content;
+        const text = (typeof choice === "string" ? choice : "")?.trim() || 
+                     "Sorry, I couldn't answer that.";
+        return text;
 
     } catch (err) {
         console.error("answerWithContext error:", err);
@@ -203,12 +194,10 @@ Rules:
     }
 }
 
-
-
 //
 // 5. Generate vegan recipes
 //
-async function generateRecipes(ingredients, count = 3) {
+export async function generateRecipes(ingredients, count = 3) {
     const prompt = `
 Generate ${count} VEGAN recipes using these ingredients:
 
@@ -223,7 +212,7 @@ Return STRICT JSON array:
     "ingredients": [
       { "name": "", "amount": "", "unit": "" }
     ],
-    "steps": [],
+    "steps": []
   }
 ]
 `;
@@ -237,22 +226,12 @@ Return STRICT JSON array:
             ],
         });
 
-        const raw = response.choices[0].message.content.trim();
-
-        // Extract JSON inside ```json if needed
+        const raw = response.choices?.[0]?.message?.content?.trim() || "";
         const match = raw.match(/\[[\s\S]*\]/);
-        return match ? JSON.parse(match[0]) : JSON.parse(raw);
+        return match ? JSON.parse(match[0]) : [];
 
     } catch (err) {
         console.error("generateRecipes error:", err);
         return [];
     }
-}
-
-export {
-    extractIngredients,
-    rewriteRecipeSteps,
-    isAllowedForUser,
-    answerWithContext,
-    generateRecipes
 }

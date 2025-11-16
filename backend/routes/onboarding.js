@@ -2,6 +2,7 @@
 import express from "express";
 import User from "../models/User.js";
 import UserImpact from "../models/UserImpact.js";
+import { swiftToBackendDietLevel, backendToSwiftDietLevel } from "../utils/eatingStyleMapper.js";
 
 const router = express.Router();
 
@@ -20,9 +21,12 @@ router.post("/profile", async (req, res) => {
       return res.status(400).json({ error: "eatingStyle is required" });
     }
 
+    // Convert Swift EatingStyle to backend dietLevel
+    const backendDietLevel = swiftToBackendDietLevel(eatingStyle);
+
     const user = await User.create({
       name: "User",
-      dietLevel: eatingStyle,
+      dietLevel: backendDietLevel,
       extraForbiddenTags: dietaryRestrictions || [],
       preferredCuisines: cuisinePreferences || [],
       cookingStylePreferences: cookingStylePreferences || [],
@@ -38,10 +42,11 @@ router.post("/profile", async (req, res) => {
       last_activity_date: null,
     });
 
+    // Return in Swift UserProfile format
     const profile = {
       id: user._id.toString(),
       userName: "User",
-      eatingStyle: user.dietLevel,
+      eatingStyle: backendToSwiftDietLevel(backendDietLevel), // Convert back to Swift format
       dietaryRestrictions: user.extraForbiddenTags || [],
       cuisinePreferences: user.preferredCuisines || [],
       cookingStylePreferences: cookingStylePreferences || [],

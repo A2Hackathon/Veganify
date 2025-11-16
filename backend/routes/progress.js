@@ -1,6 +1,7 @@
 import express from "express";
 import User from "../models/User.js";
 import UserImpact from "../models/UserImpact.js";
+import { backendToSwiftDietLevel } from "../utils/eatingStyleMapper.js";
 
 const router = express.Router();
 
@@ -30,12 +31,12 @@ router.post("/complete-mission", async (req, res) => {
 
     // Award XP based on mission (simplified - can be enhanced)
     const xpRewards = {
-      "1": 10, // Log a meal
-      "2": 5,  // Scan ingredients
-      "3": 15  // Try a new recipe
+      "log_meal": 20,
+      "scan_ingredients": 10,
+      "try_recipe": 30
     };
 
-    const xpAward = xpRewards[missionId] || 5;
+    const xpAward = xpRewards[missionId] || 10;
     impact.xp += xpAward;
 
     // Update forest stage based on XP
@@ -58,15 +59,15 @@ router.post("/complete-mission", async (req, res) => {
     const xpInCurrentLevel = impact.xp % 100;
     const xpToNextLevel = 100 - xpInCurrentLevel;
 
-    // Return updated profile
+    // Return updated profile in Swift UserProfile format
     const profile = {
       id: user._id.toString(),
       userName: user.name || "User",
-      eatingStyle: user.dietLevel || "vegan",
+      eatingStyle: backendToSwiftDietLevel(user.dietLevel), // Convert to Swift format
       dietaryRestrictions: user.extraForbiddenTags || [],
       cuisinePreferences: user.preferredCuisines || [],
-      cookingStylePreferences: [],
-      sproutName: "Bud",
+      cookingStylePreferences: user.cookingStylePreferences || [],
+      sproutName: user.sproutName || "Bud",
       level: level,
       xp: impact.xp,
       xpToNextLevel: xpToNextLevel,
@@ -82,4 +83,3 @@ router.post("/complete-mission", async (req, res) => {
 });
 
 export default router;
-
