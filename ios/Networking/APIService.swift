@@ -32,9 +32,9 @@ class APIService {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body = [
-            "recipe": ["text": recipeText],
-            "chosenSubs": chosenSubs.map { ["original": $0.original, "substitute": $0.substitute] }
+        let body: [String: Any] = [
+            "recipe": ["text": recipeText] as [String: String],
+            "chosenSubs": chosenSubs.map { ["original": $0.original, "substitute": $0.substitute] as [String: String] }
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)

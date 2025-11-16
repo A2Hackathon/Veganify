@@ -316,8 +316,8 @@ struct MissionsView: View {
                         
                         if !mission.isCompleted {
                             Button {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    vm.completeMission(mission)
+                                Task {
+                                    await vm.completeMission(mission)
                                 }
                             } label: {
                                 Text("Complete")
