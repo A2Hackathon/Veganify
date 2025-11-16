@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 const client = new OpenAI({
-  apiKey: "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",
+  apiKey: "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",
   baseURL: "https://openrouter.ai/api/v1",
 });
 
@@ -161,7 +161,10 @@ Return STRICT JSON:
 // 4. Answer with context
 //
 export async function answerWithContext(userContext, userQuestion) {
-  const isRecipeRequest = /make|create|recipe|cook|prepare|how to make|show me|give me/i.test(userQuestion);
+  const recipeKeywords = /make|create|recipe|cook|prepare|how to make|show me|give me|with|and/i;
+  const ingredientPattern = /(pasta|broccoli|rice|tofu|chicken|beef|vegetables?|ingredients?)/i;
+  const isRecipeRequest = recipeKeywords.test(userQuestion) || 
+                          (ingredientPattern.test(userQuestion) && userQuestion.split(/\s+/).length <= 5);
   
   const systemPrompt = `You are a friendly vegan cooking assistant named Sprout. You help users with vegan recipes, cooking tips, and dietary questions. Be conversational, helpful, and enthusiastic about plant-based cooking. Always respond naturally to greetings and questions.`;
 
@@ -188,15 +191,17 @@ User's question: "${userQuestion}"
 
 User preferences:
 - Diet: ${userContext?.user?.dietLevel || "vegan"}
+- Dietary restrictions: ${userContext?.user?.extraForbiddenTags?.join(", ") || "none"}
 - Preferred cuisines: ${userContext?.user?.preferredCuisines?.join(", ") || "none"}
 - Cooking style: ${userContext?.user?.cookingStylePreferences?.join(", ") || "none"}
 
-IMPORTANT: Generate a FULL, DETAILED recipe with all ingredients and step-by-step instructions. Do NOT just list the ingredients. Include cooking methods, temperatures, times, and helpful tips.`;
+IMPORTANT: Generate a FULL, DETAILED recipe with all ingredients and step-by-step instructions. Do NOT just list the ingredients. Include cooking methods, temperatures, times, and helpful tips. Make sure the recipe respects the user's dietary restrictions and preferences.`;
   } else {
     userPrompt = `User question: "${userQuestion}"
 
 User context (for reference):
 - Diet: ${userContext?.user?.dietLevel || "vegan"}
+- Dietary restrictions: ${userContext?.user?.extraForbiddenTags?.join(", ") || "none"}
 - Preferred cuisines: ${userContext?.user?.preferredCuisines?.join(", ") || "none"}
 - Cooking style: ${userContext?.user?.cookingStylePreferences?.join(", ") || "none"}
 - Saved recipes: ${userContext?.recipes?.length || 0}
@@ -206,6 +211,9 @@ Answer the user's question naturally. If it's a greeting, respond warmly. If it'
   }
 
   try {
+    console.log("Calling OpenAI API with model:", MODEL);
+    console.log("User prompt length:", userPrompt.length);
+    
     const response = await client.chat.completions.create({
       model: MODEL,
       messages: [
@@ -215,6 +223,9 @@ Answer the user's question naturally. If it's a greeting, respond warmly. If it'
       temperature: 0.8,
     });
 
+    console.log("OpenAI API response received");
+    console.log("Response choices count:", response.choices?.length || 0);
+
     const raw = response.choices?.[0]?.message?.content || "";
     const text = raw.trim();
     
@@ -223,13 +234,22 @@ Answer the user's question naturally. If it's a greeting, respond warmly. If it'
       return "I'm here to help! What would you like to cook today?";
     }
     
+    console.log("AI response length:", text.length);
     return text;
   } catch (err) {
     console.error("answerWithContext error:", err);
-    console.error("Error details:", err.message);
+    console.error("Error name:", err.name);
+    console.error("Error message:", err.message);
+    console.error("Error code:", err.code);
+    console.error("Error status:", err.status);
     if (err.response) {
-      console.error("API response:", err.response.data);
+      console.error("API response status:", err.response.status);
+      console.error("API response data:", JSON.stringify(err.response.data, null, 2));
     }
+    if (err.error) {
+      console.error("Error object:", JSON.stringify(err.error, null, 2));
+    }
+    console.error("Full error stack:", err.stack);
     return "I'm having trouble connecting right now. Please try again in a moment.";
   }
 }
