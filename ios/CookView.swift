@@ -41,10 +41,12 @@ struct CookView: View {
                                             subtitle: "Use your groceries + preferences",
                                             color: .sproutGreen
                                         ) {
+                                            print("🔘 Button pressed: Vegan Cooking Simplified")
                                             // Add user message showing they clicked the button
                                             vm.addUserChat("Generate a vegan recipe for me")
                                             // Trigger AI recipe generation
                                             Task {
+                                                print("🚀 Starting recipe generation task...")
                                                 await vm.generateRecipe()
                                             }
                                         }
@@ -55,6 +57,7 @@ struct CookView: View {
                                             subtitle: "Veganize an existing dish",
                                             color: .sproutGreenDark
                                         ) {
+                                            print("🔘 Button pressed: Savor the Same Flavor")
                                             // Add user message showing they clicked the button
                                             vm.addUserChat("I want to veganize a recipe")
                                             // Add AI prompt message
@@ -89,6 +92,7 @@ struct CookView: View {
                             
                             Button {
                                 let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                print("🔘 Send button pressed, text: '\(text)'")
                                 if !text.isEmpty {
                                     vm.addUserChat(text)
                                     let messageText = text // Save before clearing
@@ -99,15 +103,21 @@ struct CookView: View {
                                     let recipeKeywords = ["recipe", "ingredients", "cook", "make", "prepare", "dish", "meal"]
                                     let isRecipeRequest = recipeKeywords.contains { lowerText.contains($0) } || messageText.count > 50
                                     
+                                    print("📝 Message type: \(isRecipeRequest ? "Recipe veganization" : "Chat message")")
+                                    
                                     Task {
                                         if isRecipeRequest {
                                             // Try to veganize as recipe
+                                            print("🌿 Routing to veganizeRecipe...")
                                             await vm.veganizeRecipe(inputText: messageText)
                                         } else {
                                             // Send to AI chat
+                                            print("💬 Routing to sendChatMessage...")
                                             await vm.sendChatMessage(messageText)
                                         }
                                     }
+                                } else {
+                                    print("⚠️ Send button pressed but text is empty")
                                 }
                             } label: {
                                 Image(systemName: "paperplane.fill")

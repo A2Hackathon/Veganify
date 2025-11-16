@@ -58,15 +58,28 @@ router.post("/generate", async (req, res) => {
       recipe: [recipeText]
     });
 
+    // Convert recipe text to steps array (split by newlines or numbered steps)
+    const steps = recipeText
+      .split(/\n+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+      .filter(s => !s.match(/^(recipe|ingredients|instructions|method|steps?):?$/i));
+    
+    // If no steps found, use the whole text as one step
+    const finalSteps = steps.length > 0 ? steps : [recipeText];
+
     // Return in iOS Recipe format
     const recipe = {
       id: savedRecipe._id.toString(),
       title: "Generated Recipe",
+      userId: userId,
+      tags: [],
+      duration: "30 min",
       ingredients: [],
-      instructions: recipeText,
-      prepTime: 0,
-      cookTime: 0,
-      servings: 0
+      steps: finalSteps,
+      previewImageUrl: "",
+      type: "simplified",
+      substitutionMap: null
     };
 
     res.json(recipe);
@@ -129,15 +142,35 @@ router.post("/veganize", async (req, res) => {
       recipe: [newRecipe]
     });
 
+    // Convert recipe text to steps array (split by newlines or numbered steps)
+    const steps = newRecipe
+      .split(/\n+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+      .filter(s => !s.match(/^(recipe|ingredients|instructions|method|steps?):?$/i));
+    
+    // If no steps found, use the whole text as one step
+    const finalSteps = steps.length > 0 ? steps : [newRecipe];
+
+    // Map ingredients to RecipeIngredient format
+    const recipeIngredients = adaptedIngredients.map(item => ({
+      name: item.substitute,
+      amount: null,
+      unit: null
+    }));
+
     // Return in iOS Recipe format
     const recipe = {
       id: savedRecipe._id.toString(),
       title: "Veganized Recipe",
-      ingredients: adaptedIngredients.map(item => item.substitute),
-      instructions: newRecipe,
-      prepTime: 0,
-      cookTime: 0,
-      servings: 0
+      userId: userId,
+      tags: [],
+      duration: "30 min",
+      ingredients: recipeIngredients,
+      steps: finalSteps,
+      previewImageUrl: "",
+      type: "veganized",
+      substitutionMap: Object.fromEntries(adaptedIngredients.map(item => [item.original, item.substitute]))
     };
 
     res.json(recipe);

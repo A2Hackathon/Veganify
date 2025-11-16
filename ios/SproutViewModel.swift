@@ -172,7 +172,7 @@ class SproutViewModel: ObservableObject {
             print("   User ID:", userId)
             let recipe = try await apiClient.generateRecipe(userId: userId)
             print("✅ Recipe generated:", recipe.title)
-            print("   Instructions length:", recipe.instructions.count, "characters")
+            print("   Steps count:", recipe.steps.count)
             await MainActor.run {
                 let message = ChatMessage(isUser: false, text: "Here's a personalized vegan recipe for you! 🎉", recipe: recipe)
                 chatMessages.append(message)
@@ -212,7 +212,7 @@ class SproutViewModel: ObservableObject {
             print("   Recipe text length:", inputText.count, "characters")
             let recipe = try await apiClient.veganizeRecipe(userId: userId, inputText: inputText)
             print("✅ Recipe veganized:", recipe.title)
-            print("   Instructions length:", recipe.instructions.count, "characters")
+            print("   Steps count:", recipe.steps.count)
             await MainActor.run {
                 let message = ChatMessage(isUser: false, text: "Here's your veganized recipe! 🌱✨", recipe: recipe)
                 chatMessages.append(message)

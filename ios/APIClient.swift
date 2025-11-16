@@ -11,12 +11,23 @@ class APIClient {
     
     init() {
         // Backend URL - matches server port 4000
+        // For iOS Simulator: use localhost
+        // For physical device: use your computer's IP address (e.g., http://192.168.1.100:4000)
+        // To find your IP: On Mac: System Preferences > Network, or run: ipconfig getifaddr en0
+        // On Windows: ipconfig (look for IPv4 Address)
         #if DEBUG
+        #if targetEnvironment(simulator)
         self.baseURL = "http://localhost:4000"
+        #else
+        // For physical device, replace with your computer's IP address
+        // Example: "http://192.168.1.100:4000"
+        self.baseURL = "http://localhost:4000" // ⚠️ Change this to your computer's IP for physical device
+        #endif
         #else
         self.baseURL = "https://your-production-url.com"
         #endif
         self.session = URLSession.shared
+        print("🌐 APIClient initialized with baseURL: \(self.baseURL)")
     }
     
     // MARK: - Helper Methods
@@ -27,35 +38,70 @@ class APIClient {
         body: Encodable? = nil,
         imageData: Data? = nil
     ) async throws -> T {
-        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+        let fullURL = "\(baseURL)\(endpoint)"
+        print("📡 API Request: \(method) \(fullURL)")
+        
+        guard let url = URL(string: fullURL) else {
+            print("❌ Invalid URL: \(fullURL)")
             throw APIError.invalidURL
         }
         
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30.0 // 30 second timeout
         
         // Add body or image data
         if let body = body {
-            request.httpBody = try JSONEncoder().encode(body)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            request.httpBody = try encoder.encode(body)
+            if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
+                print("📤 Request body: \(bodyString)")
+            }
         } else if let imageData = imageData {
             let boundary = UUID().uuidString
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
             request.httpBody = createMultipartBody(imageData: imageData, boundary: boundary)
+            print("📤 Request body: multipart/form-data (\(imageData.count) bytes)")
         }
         
-        let (data, response) = try await session.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
+        do {
+            print("⏳ Sending request...")
+            let (data, response) = try await session.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("❌ Invalid response type")
+                throw APIError.invalidResponse
+            }
+            
+            print("📥 Response status: \(httpResponse.statusCode)")
+            
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("📥 Response body: \(responseString.prefix(500))\(responseString.count > 500 ? "..." : "")")
+            }
+            
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let errorBody = String(data: data, encoding: .utf8) ?? "No error message"
+                print("❌ HTTP Error \(httpResponse.statusCode): \(errorBody)")
+                throw APIError.httpError(httpResponse.statusCode)
+            }
+            
+            let decoder = JSONDecoder()
+            let decoded = try decoder.decode(T.self, from: data)
+            print("✅ Successfully decoded response")
+            return decoded
+        } catch let error as DecodingError {
+            print("❌ JSON Decoding Error: \(error)")
+            throw error
+        } catch {
+            print("❌ Network Error: \(error.localizedDescription)")
+            if let urlError = error as? URLError {
+                print("   URL Error code: \(urlError.code.rawValue)")
+                print("   URL Error description: \(urlError.localizedDescription)")
+            }
+            throw error
         }
-        
-        guard (200...299).contains(httpResponse.statusCode) else {
-            throw APIError.httpError(httpResponse.statusCode)
-        }
-        
-        let decoder = JSONDecoder()
-        return try decoder.decode(T.self, from: data)
     }
     
     private func createMultipartBody(imageData: Data, boundary: String) -> Data {
