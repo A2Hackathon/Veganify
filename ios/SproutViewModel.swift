@@ -56,8 +56,12 @@ class SproutViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
-            userProfile = try await apiClient.updateProfile(profile)
+            let updated = try await apiClient.updateProfile(profile)
+            await MainActor.run {
+                userProfile = updated
+            }
         } catch {
+            print("Error updating profile: \(error)")
             errorMessage = "Failed to update profile: \(error.localizedDescription)"
         }
     }
@@ -276,6 +280,19 @@ class SproutViewModel: ObservableObject {
             scannedMenu = response.dishes
         } catch {
             errorMessage = "Failed to scan menu: \(error.localizedDescription)"
+        }
+    }
+    
+    func analyzeIngredientsList(ingredients: [String], userId: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let response = try await apiClient.analyzeIngredientsText(ingredients: ingredients, userId: userId)
+            scannedIngredients = response.ingredients
+        } catch {
+            print("Error analyzing ingredients: \(error)")
+            errorMessage = "Failed to analyze ingredients: \(error.localizedDescription)"
         }
     }
     

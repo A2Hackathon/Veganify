@@ -195,6 +195,40 @@ class APIClient {
         )
     }
     
+    func analyzeIngredientsText(ingredients: [String], userId: String) async throws -> ScanIngredientsResponse {
+        struct Request: Encodable {
+            let userId: String
+            let ingredients: [String]
+        }
+        
+        let backendResponse: BackendScanIngredientsResponse = try await request(
+            endpoint: "/scan/ingredients/text",
+            method: "POST",
+            body: Request(userId: userId, ingredients: ingredients)
+        )
+        
+        // Map backend response to iOS format
+        return ScanIngredientsResponse(
+            ingredients: backendResponse.ingredients.map { item in
+                let status: IngredientStatus
+                let allowedStr = item.allowed.trimmingCharacters(in: .whitespaces)
+                if allowedStr == "Allowed" {
+                    status = .allowed
+                } else if allowedStr == "NotAllowed" {
+                    status = .notAllowed
+                } else {
+                    status = .ambiguous
+                }
+                
+                return IngredientClassification(
+                    name: item.name,
+                    status: status,
+                    reason: item.reason
+                )
+            }
+        )
+    }
+    
     struct AlternativeProductResponse: Codable {
         let suggestions: [String]
     }

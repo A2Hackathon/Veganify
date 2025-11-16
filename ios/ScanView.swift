@@ -1,12 +1,12 @@
 import SwiftUI
 
-
 struct ScanView: View {
     @EnvironmentObject var vm: SproutViewModel
     @State private var selectedImage: UIImage?
     @State private var showingImagePicker = false
-    @State private var sourceType: UIImagePickerController.SourceType = .camera
-    @State private var scanMode: ScanMode = .ingredients
+    @State private var sourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var scanMode: ScanMode = .menu
+    @State private var ingredientText: String = ""
     @State private var showingAlternatives = false
     @State private var selectedIngredient: IngredientClassification?
     @State private var alternatives: [String] = []
@@ -28,41 +28,84 @@ struct ScanView: View {
                 
                 VStack(spacing: 0) {
                     // Mode selector
-                    if selectedImage == nil {
-                        Picker("Scan Mode", selection: $scanMode) {
-                            Text("Ingredients").tag(ScanMode.ingredients)
-                            Text("Menu").tag(ScanMode.menu)
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
+                    Picker("Scan Mode", selection: $scanMode) {
+                        Text("Ingredients").tag(ScanMode.ingredients)
+                        Text("Menu").tag(ScanMode.menu)
                     }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
                     
-                    if let image = selectedImage {
+                    if scanMode == .ingredients {
+                        // Ingredients text input view
                         ScrollView {
-                            VStack(spacing: 20) {
-                                // Scanned image
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(maxWidth: .infinity)
-                                    .cornerRadius(20)
-                                    .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
-                                    .padding(.horizontal, 20)
-                                    .padding(.top, 20)
+                            VStack(spacing: 24) {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text("Paste or type ingredients")
+                                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                                        .foregroundColor(.sproutGreenDark)
+                                    
+                                    Text("Enter ingredients separated by commas or new lines")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.top, 20)
                                 
-                                if vm.isLoading {
-                                    ProgressView()
-                                        .scaleEffect(1.5)
-                                        .padding()
-                                } else if scanMode == .ingredients && !vm.scannedIngredients.isEmpty {
-                                    // Ingredients results
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Ingredients")
+                                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                        .foregroundColor(.sproutGreenDark)
+                                        .padding(.horizontal, 20)
+                                    
+                                    TextEditor(text: $ingredientText)
+                                        .frame(minHeight: 200)
+                                        .padding(12)
+                                        .background(Color(.systemBackground))
+                                        .cornerRadius(12)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(Color.sproutGreen.opacity(0.3), lineWidth: 1)
+                                        )
+                                        .padding(.horizontal, 20)
+                                    
+                                    Button {
+                                        analyzeIngredients()
+                                    } label: {
+                                        HStack {
+                                            Spacer()
+                                            if vm.isLoading {
+                                                ProgressView()
+                                                    .progressViewStyle(.circular)
+                                                    .tint(.white)
+                                            } else {
+                                                Text("Analyze Ingredients")
+                                                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                            }
+                                            Spacer()
+                                        }
+                                        .foregroundColor(.white)
+                                        .padding(.vertical, 16)
+                                        .background(
+                                            LinearGradient(
+                                                colors: ingredientText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? [Color.gray, Color.gray] : [Color.sproutGreen, Color.sproutGreenDark],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                        .cornerRadius(16)
+                                    }
+                                    .disabled(ingredientText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || vm.isLoading)
+                                    .padding(.horizontal, 20)
+                                }
+                                
+                                if !vm.scannedIngredients.isEmpty {
                                     VStack(alignment: .leading, spacing: 20) {
                                         HStack {
                                             Image(systemName: "checkmark.seal.fill")
                                                 .font(.title3)
                                                 .foregroundColor(.sproutGreen)
-                                            Text("Scan Results")
+                                            Text("Analysis Results")
                                                 .font(.system(size: 22, weight: .bold, design: .rounded))
                                             Spacer()
                                         }
@@ -88,99 +131,125 @@ struct ScanView: View {
                                     .padding(24)
                                     .cardStyle()
                                     .padding(.horizontal, 20)
-                                    .padding(.bottom, 24)
-                                } else if scanMode == .menu && !vm.scannedMenu.isEmpty {
-                                    // Menu results
-                                    VStack(alignment: .leading, spacing: 20) {
-                                        HStack {
-                                            Image(systemName: "fork.knife")
-                                                .font(.title3)
-                                                .foregroundColor(.sproutGreen)
-                                            Text("Menu Results")
-                                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                                            Spacer()
-                                        }
-                                        
-                                        VStack(spacing: 16) {
-                                            ForEach(vm.scannedMenu) { dish in
-                                                MenuDishRow(dish: dish)
-                                            }
-                                        }
-                                    }
-                                    .padding(24)
-                                    .cardStyle()
-                                    .padding(.horizontal, 20)
-                                    .padding(.bottom, 24)
                                 }
+                                
+                                Spacer()
                             }
                         }
                     } else {
-                        VStack(spacing: 32) {
-                            Spacer()
-                            
-                            // Empty state
-                            VStack(spacing: 20) {
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            RadialGradient(
-                                                colors: [
-                                                    Color.sproutGreen.opacity(0.2),
-                                                    Color.sproutGreen.opacity(0.1),
-                                                    Color.clear
-                                                ],
-                                                center: .center,
-                                                startRadius: 30,
-                                                endRadius: 100
-                                            )
-                                        )
-                                        .frame(width: 200, height: 200)
+                        // Menu scan view
+                        if let image = selectedImage {
+                            ScrollView {
+                                VStack(spacing: 20) {
+                                    // Scanned image
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(maxWidth: .infinity)
+                                        .cornerRadius(20)
+                                        .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
+                                        .padding(.horizontal, 20)
+                                        .padding(.top, 20)
                                     
-                                    Image(systemName: "camera.viewfinder")
-                                        .font(.system(size: 80))
-                                        .foregroundStyle(
-                                            LinearGradient(
-                                                colors: [Color.sproutGreen, Color.sproutGreenDark],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
+                                    if vm.isLoading {
+                                        ProgressView()
+                                            .scaleEffect(1.5)
+                                            .padding()
+                                    } else if !vm.scannedMenu.isEmpty {
+                                        // Menu results
+                                        VStack(alignment: .leading, spacing: 20) {
+                                            HStack {
+                                                Image(systemName: "fork.knife")
+                                                    .font(.title3)
+                                                    .foregroundColor(.sproutGreen)
+                                                Text("Menu Results")
+                                                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                                                Spacer()
+                                            }
+                                            
+                                            VStack(spacing: 16) {
+                                                ForEach(vm.scannedMenu) { dish in
+                                                    MenuDishRow(dish: dish)
+                                                }
+                                            }
+                                        }
+                                        .padding(24)
+                                        .cardStyle()
+                                        .padding(.horizontal, 20)
+                                        .padding(.bottom, 24)
+                                    }
+                                }
+                            }
+                        } else {
+                            VStack(spacing: 32) {
+                                Spacer()
+                                
+                                // Empty state
+                                VStack(spacing: 20) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(
+                                                RadialGradient(
+                                                    colors: [
+                                                        Color.sproutGreen.opacity(0.2),
+                                                        Color.sproutGreen.opacity(0.1),
+                                                        Color.clear
+                                                    ],
+                                                    center: .center,
+                                                    startRadius: 30,
+                                                    endRadius: 100
+                                                )
                                             )
-                                        )
+                                            .frame(width: 200, height: 200)
+                                        
+                                        Image(systemName: "camera.viewfinder")
+                                            .font(.system(size: 80))
+                                            .foregroundStyle(
+                                                LinearGradient(
+                                                    colors: [Color.sproutGreen, Color.sproutGreenDark],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                )
+                                            )
+                                    }
+                                    
+                                    VStack(spacing: 8) {
+                                        Text("Scan Menu")
+                                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                                        Text("Take a photo of a menu to see which dishes fit your preferences.")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, 40)
+                                    }
                                 }
                                 
-                                VStack(spacing: 8) {
-                                    Text("Scan Ingredients")
-                                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                                    Text("Scan an ingredient list or menu to see if it fits your preferences.")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal, 40)
+                                // Action buttons
+                                VStack(spacing: 16) {
+                                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                                        ScanButton(
+                                            title: "Take a Photo",
+                                            icon: "camera.fill",
+                                            color: .sproutGreen
+                                        ) {
+                                            sourceType = .camera
+                                            showingImagePicker = true
+                                        }
+                                    }
+                                    
+                                    ScanButton(
+                                        title: "Upload Image",
+                                        icon: "photo.on.rectangle.angled",
+                                        color: .sproutGreenDark
+                                    ) {
+                                        sourceType = .photoLibrary
+                                        showingImagePicker = true
+                                    }
                                 }
-                            }
-                            
-                            // Action buttons
-                            VStack(spacing: 16) {
-                                ScanButton(
-                                    title: "Take a Photo",
-                                    icon: "camera.fill",
-                                    color: .sproutGreen
-                                ) {
-                                    sourceType = .camera
-                                    showingImagePicker = true
-                                }
+                                .padding(.horizontal, 20)
                                 
-                                ScanButton(
-                                    title: "Upload Image",
-                                    icon: "photo.on.rectangle.angled",
-                                    color: .sproutGreenDark
-                                ) {
-                                    sourceType = .photoLibrary
-                                    showingImagePicker = true
-                                }
+                                Spacer()
                             }
-                            .padding(.horizontal, 20)
-                            
-                            Spacer()
                         }
                     }
                 }
@@ -191,15 +260,9 @@ struct ScanView: View {
                 ImagePicker(image: $selectedImage, sourceType: sourceType)
             }
             .onChange(of: selectedImage) { newImage in
-                if let image = newImage {
+                if let image = newImage, scanMode == .menu {
                     Task {
-                        if scanMode == .ingredients {
-                            if let imageData = image.jpegData(compressionQuality: 0.8) {
-                                await vm.scanIngredients(imageData: imageData)
-                            }
-                        } else {
-                            await vm.scanMenu(image: image)
-                        }
+                        await vm.scanMenu(image: image)
                     }
                 }
             }
@@ -211,6 +274,19 @@ struct ScanView: View {
                     )
                 }
             }
+        }
+    }
+    
+    private func analyzeIngredients() {
+        let ingredients = ingredientText
+            .components(separatedBy: CharacterSet(charactersIn: ",\n"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        
+        guard !ingredients.isEmpty, let userId = vm.userProfile?.id else { return }
+        
+        Task {
+            await vm.analyzeIngredientsList(ingredients: ingredients, userId: userId)
         }
     }
 }
@@ -429,4 +505,3 @@ struct AlternativesView: View {
         }
     }
 }
-

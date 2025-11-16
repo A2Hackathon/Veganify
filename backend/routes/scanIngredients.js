@@ -52,6 +52,46 @@ router.post('/', upload.single('image'), async (req, res) => {
     }
 });
 
+// POST /scan/ingredients/text
+// Analyze ingredients from text input
+router.post("/text", async (req, res) => {
+    try {
+        const { userId, ingredients } = req.body;
+
+        if (!userId || !ingredients || !Array.isArray(ingredients)) {
+            return res.status(400).json({ error: "userId and ingredients array are required" });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Call isAllowedForUser on all ingredients
+        const checkResults = await isAllowedForUser(
+            { dietLevel: user.dietLevel, extraForbiddenTags: user.extraForbiddenTags || [] },
+            ingredients
+        );
+
+        // Format for iOS - map to expected format
+        const formattedIngredients = checkResults.map(r => ({
+            name: r.ingredient || r.name || "",
+            allowed: r.allowed || "Allowed",
+            reason: r.reason || r.reasons?.[0] || ""
+        }));
+        
+        res.json({ 
+            success: true, 
+            isConsumable: checkResults.every(r => r.allowed === 'Allowed'),
+            ingredients: formattedIngredients 
+        });
+
+    } catch (err) {
+        console.error("Analyze ingredients text error:", err);
+        res.status(500).json({ success: false, error: "Internal server error" });
+    }
+});
+
 // POST /scan/alternative-product
 router.post("/alternative-product", async (req, res) => {
     try {
