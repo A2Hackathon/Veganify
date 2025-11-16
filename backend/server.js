@@ -12,6 +12,12 @@ import veganizeRoutes from "./routes/veganize.js";
 import cookRoutes from "./routes/cookWithThis.js";
 import impactRoutes from "./routes/impact.js";
 import aiAskRoutes from "./routes/aiAsk.js";
+import profileRoutes from "./routes/profile.js";
+import onboardingRoutes from "./routes/onboarding.js";
+import homeRoutes from "./routes/home.js";
+import progressRoutes from "./routes/progress.js";
+import groceryListRoutes from "./routes/groceryList.js";
+import recipesRoutes from "./routes/recipes.js";
 
 dotenv.config();
 
@@ -32,12 +38,19 @@ app.use(express.json({ limit: "2mb" }));
 app.get("/", (req, res) => res.json({ ok: true, msg: "Veganify backend (Albert focus) running" }));
 
 // register routes
+// Note: More specific routes should be registered before general ones
 app.use("/scan/ingredients", scanIngredientsRoutes);
 app.use("/scan/menu", scanMenuRoutes);
-app.use("/recipes/veganize", veganizeRoutes);
+app.use("/recipes/veganize", veganizeRoutes); // Must come before /recipes
 app.use("/recipes/from-ingredients", cookRoutes);
+app.use("/recipes", recipesRoutes); // General recipes routes
 app.use("/impact", impactRoutes);
 app.use("/ai", aiAskRoutes);
+app.use("/profile", profileRoutes);
+app.use("/onboarding", onboardingRoutes);
+app.use("/home", homeRoutes);
+app.use("/progress", progressRoutes);
+app.use("/grocery-list", groceryListRoutes);
 
 // basic error handler
 app.use((err, req, res, next) => {

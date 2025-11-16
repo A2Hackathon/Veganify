@@ -23,8 +23,8 @@ struct OnboardingView: View {
             
             VStack(spacing: 0) {
                 // Progress indicator
-                if currentStep > 0 && currentStep < 7 {
-                    ProgressView(value: Double(currentStep), total: 7)
+                if currentStep > 0 && currentStep < 6 {
+                    ProgressView(value: Double(currentStep), total: 6)
                         .progressViewStyle(.linear)
                         .tint(
                             LinearGradient(
@@ -57,9 +57,6 @@ struct OnboardingView: View {
                     
                     ReviewStep(viewModel: viewModel, currentStep: $currentStep)
                         .tag(5)
-                    
-                    NameSproutStep(viewModel: viewModel, currentStep: $currentStep)
-                        .tag(6)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
@@ -708,9 +705,7 @@ struct ReviewStep: View {
                     }
                     
                     Button {
-                        withAnimation {
-                            currentStep = 6
-                        }
+                        completeOnboarding()
                     } label: {
                         Text("Looks Good")
                             .font(.system(size: 18, weight: .semibold, design: .rounded))
@@ -730,6 +725,21 @@ struct ReviewStep: View {
                 }
                 .padding(.horizontal, 32)
                 .padding(.bottom, 40)
+            }
+        }
+    }
+    
+    private func completeOnboarding() {
+        // Set default sprout name if not already set
+        if viewModel.data.sproutName.isEmpty {
+            viewModel.data.sproutName = "Bud"
+        }
+        
+        Task {
+            await viewModel.completeOnboarding()
+            await MainActor.run {
+                // Onboarding completion is handled by RootView via @AppStorage
+                UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
             }
         }
     }
@@ -894,7 +904,7 @@ class OnboardingViewModel: ObservableObject {
             dietaryRestrictions: data.dietaryRestrictions,
             cuisinePreferences: data.cuisinePreferences,
             cookingStylePreferences: data.cookingStylePreferences,
-            sproutName: data.sproutName,
+            sproutName: data.sproutName.isEmpty ? "Bud" : data.sproutName,
             level: 1,
             xp: 0,
             xpToNextLevel: 100,

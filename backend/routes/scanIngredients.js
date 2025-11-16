@@ -52,4 +52,37 @@ router.post('/', upload.single('image'), async (req, res) => {
     }
 });
 
+// POST /scan/alternative-product
+router.post("/alternative-product", async (req, res) => {
+    try {
+        const { userId, productType, context } = req.body;
+
+        if (!userId || !productType) {
+            return res.status(400).json({ error: "userId and productType are required" });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Use the analyze endpoint logic to get alternatives
+        const { readFileSync } = await import("fs");
+        const { fileURLToPath } = await import("url");
+        const { dirname, join } = await import("path");
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = dirname(__filename);
+        const substitutions = JSON.parse(readFileSync(join(__dirname, "../config/substitutions.json"), "utf-8"));
+
+        const dietLevel = user.dietLevel?.toLowerCase() || "vegan";
+        const key = productType.toUpperCase();
+        const suggestions = substitutions[key]?.[dietLevel] || [];
+
+        res.json({ suggestions });
+    } catch (err) {
+        console.error("Alternative product error:", err);
+        res.status(500).json({ error: "Failed to get alternative products" });
+    }
+});
+
 export default router;

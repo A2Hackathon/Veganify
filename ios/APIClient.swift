@@ -298,6 +298,65 @@ class APIClient {
         )
     }
     
+    // MARK: - Recipe Analysis & Veganization
+    
+    struct AnalyzeResponse: Codable {
+        let success: Bool
+        let violatesCount: Int
+        let problematicIngredients: [ProblemIngredient]
+    }
+    
+    struct ProblemIngredient: Codable {
+        let original: String
+        let suggestions: [String]
+    }
+    
+    struct ChosenSubstitute: Codable {
+        let original: String
+        let substitute: String
+    }
+    
+    struct CommitResponse: Codable {
+        let adaptedRecipe: AdaptedRecipe
+    }
+    
+    struct AdaptedRecipe: Codable {
+        let ingredients: [ChosenSubstitute]
+        let text: String
+    }
+    
+    func analyzeIngredient(ingredient: String, context: String, userID: String) async throws -> AnalyzeResponse {
+        struct Request: Encodable {
+            let userID: String
+            let recipe: String
+        }
+        
+        return try await request(
+            endpoint: "/recipes/veganize/analyze",
+            method: "POST",
+            body: Request(userID: userID, recipe: ingredient)
+        )
+    }
+    
+    func commitSubstitutions(recipeText: String, chosenSubs: [ChosenSubstitute]) async throws -> String {
+        struct Request: Encodable {
+            let recipe: RecipeText
+            let chosenSubs: [ChosenSubstitute]
+        }
+        
+        struct RecipeText: Encodable {
+            let text: String
+        }
+        
+        let response: CommitResponse = try await request(
+            endpoint: "/recipes/veganize/commit",
+            method: "POST",
+            body: Request(recipe: RecipeText(text: recipeText), chosenSubs: chosenSubs)
+        )
+        
+        return response.adaptedRecipe.text
+    }
+    
     // MARK: - Dietary Restrictions Parsing
     
     struct ParseRestrictionsResponse: Codable {

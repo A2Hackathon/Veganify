@@ -227,32 +227,15 @@ class SproutViewModel: ObservableObject {
     
     
     func scanIngredients(imageData: Data) async {
-        guard let userId = userProfile?.id else { return }
+        guard let userId = userProfile?.id,
+              let image = UIImage(data: imageData) else { return }
         isLoading = true
         defer { isLoading = false }
 
         do {
-            // Send image directly to backend
-            let response = try await APIService.shared.scanIngredients(imageData: imageData, userID: userId)
-
-            // Map backend results into your local model
-            scannedIngredients = response.ingredients.map { item in
-                let status: IngredientStatus
-                let allowedStr = item.allowed.trimmingCharacters(in: .whitespaces)
-                if allowedStr == "Allowed" {
-                    status = .allowed
-                } else if allowedStr == "NotAllowed" {
-                    status = .notAllowed
-                } else {
-                    status = .ambiguous
-                }
-                return IngredientClassification(
-                    name: item.name,
-                    status: status,
-                    reason: item.reason ?? "",
-                    suggestions: nil
-                )
-            }
+            // Use APIClient which handles the mapping
+            let response = try await apiClient.scanIngredients(image: image, userId: userId)
+            scannedIngredients = response.ingredients
 
         } catch {
             print("Error scanning ingredients:", error)
@@ -277,7 +260,7 @@ class SproutViewModel: ObservableObject {
     func getAlternativeProduct(productType: String, context: String) async -> [String] {
         guard let userId = userProfile?.id else { return [] }
         do {
-            let response = try await APIService.shared.analyzeIngredient(
+            let response = try await apiClient.analyzeIngredient(
                 ingredient: productType,
                 context: context,
                 userID: userId
