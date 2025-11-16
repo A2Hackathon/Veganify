@@ -251,7 +251,7 @@ Return STRICT JSON array:
 
 export {
     extractIngredients,
-    rewriteRecipeSteps,,
+    rewriteRecipeSteps,
     isAllowedForUser,
     answerWithContext,
     generateRecipes
