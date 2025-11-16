@@ -2,84 +2,90 @@ const express = require('express');
 const router = express.Router();
 
 const substitutions = require('../config/substitutions.json');
-const { rewriteRecipeSteps } = require('../utils/llmClient');
-const llm = require("../utils/llmClient");
+const User = require('../models/User');
+const { extractIngredients, rewriteRecipeSteps } = require("../utils/llmClient");
 
-// note: the POST request includes userID => uses it to look up that specific user in models/User
-
-router.post('/', async (req, res) => {
+// Step 1: Analyze ingredients only
+router.post('/analyze', async (req, res) => {
     try {
-        const { userID, recipe, createdAt } = req.body;
+        const { userID, recipe } = req.body;
 
         if (!recipe) {
             return res.status(400).json({
                 success: false,
-                error: "Recipe with ingredients and steps is required"
+                error: "Recipe text is required"
             });
         }
-
 
         const user = await User.findById(userID);
-        userPrefs = {
-            dietLevel: user.dietLevel,
-            extraForbiddenTags: user.extraForbiddenTags || [],
-        }
-        
-        if (!dietLevel) {
-            return res.status(400).json({
-                success: false,
-                error: "dietLevel is required"
-            });
-        }
+        const dietLevel = user.dietLevel?.toLowerCase();
+        const extraForbiddenTags = user.extraForbiddenTags || [];
 
-        const level = userPrefs[dietLevel].toLowerCase();
-        const adaptedIngredients = [];
-        let dietFriendly = true;
+        const ingredients = await extractIngredients(recipe);
 
-        const ingredients = await llm.extractIngredients(recipeText);
+        const problems = []; 
 
-        // Process ingredients 
         for (const ing of ingredients) {
-            const subs = substitutions[ing.toUpperCase()]?.[level] || [];
-            const options = subs.length > 0 ? subs : [ing];
+            const key = ing.toUpperCase();
+            const subs = substitutions[key]?.[dietLevel] || [];
 
-            // Check diet compatibility
-            if (subs.length === 0 && (level != 'flexitarian')) {
-                dietFriendly = false;
+            const violatesDiet =
+                // No substitution available AND user is restrictive
+                (subs.length === 0 && dietLevel !== "flexitarian") ||
+                // Ingredient contains user forbidden tags
+                extraForbiddenTags.some(tag => ing.toLowerCase().includes(tag.toLowerCase()));
+
+            if (violatesDiet) {
+                problems.push({
+                    original: ing,
+                    suggestions: subs   // ⬅️ MULTIPLE substitutions returned
+                });
             }
-
-            adaptedIngredients.push({
-                original: ing,
-                options
-            });
         }
 
-        //  Rewrite steps 
-        let newSteps = recipe;
-        if (typeof rewriteRecipeSteps === 'function') {
-            const rewritten = await rewriteRecipe({
-                title: recipe.title,
-                ingredients: adaptedIngredients,
-                steps: recipe
-            });
-            if (rewritten) newSteps = rewritten;
-        }
-
-        // Send response 
         res.json({
             success: true,
-            originalRecipe: recipe,
-            adaptedRecipe: {
-                ingredients: adaptedIngredients,
-                steps: newSteps,
-                dietFriendly
-            },
+            violatesCount: problems.length,
+            problematicIngredients: problems
         });
 
     } catch (err) {
-        console.error("Error veganizing recipe:", err);
+        console.error("Analyze error:", err);
         res.status(500).json({ success: false, error: "Internal server error" });
     }
 });
 
-module.exports = router;
+
+// Step 2: Apply user-selected substitutes & rewrite recipe
+router.post('/commit', async (req, res) => {
+    try {
+        const { recipe, chosenSubs } = req.body;
+
+        if (!recipe?.text || !chosenSubs) {
+            return res.status(400).json({
+                success: false,
+                error: "recipe.text and chosenSubs are required"
+            });
+        }
+
+        const adaptedIngredients = chosenSubs.map(item => ({
+            original: item.original,
+            substitute: item.substitute
+        }));
+
+        const newRecipe = await llm.rewriteRecipeSteps(adaptedIngredients, recipe.text);
+
+        res.json({
+            success: true,
+            adaptedRecipe: {
+                ingredients: adaptedIngredients,
+                text: newRecipe
+            }
+        });
+
+
+    } catch (err) {
+        console.error("Commit error:", err);
+        res.status(500).json({ success: false, error: "Internal server error" });
+    }
+});
