@@ -1,55 +1,22 @@
 import { UserStorage, RecipeStorage, UserImpactStorage } from "./jsonStorage.js";
 
 export async function getUserContext(userId) {
-  if (!userId) {
-    return {
-      user: {
-        dietLevel: "flexitarian",
-        extraForbiddenTags: [],
-        preferredCuisines: [],
-        cookingStylePreferences: [],
-      },
-      recipes: [],
-      impact: null,
-    };
-  }
-
-  let user;
-  let userObjectId;
+  // ALWAYS use the single Albert user - ignore provided userId
+  let user = await UserStorage.findOne({ sproutName: "Albert" });
   
-  // Handle shared Albert user
-  if (userId === "ALBERT_SHARED_USER") {
-    user = await UserStorage.findOne({ sproutName: "Albert" });
-    if (!user) {
-      // Return default context if Albert user doesn't exist yet
-      return {
-        user: {
-          dietLevel: "vegan",
-          extraForbiddenTags: [],
-          preferredCuisines: [],
-          cookingStylePreferences: [],
-        },
-        recipes: [],
-        impact: null,
-      };
-    }
-    userObjectId = user._id;
-  } else {
-    user = await UserStorage.findById(userId);
-    if (!user) {
-      return {
-        user: {
-          dietLevel: "flexitarian",
-          extraForbiddenTags: [],
-          preferredCuisines: [],
-          cookingStylePreferences: [],
-        },
-        recipes: [],
-        impact: null,
-      };
-    }
-    userObjectId = user._id;
+  if (!user) {
+    // Create Albert user if it doesn't exist
+    user = await UserStorage.create({
+      name: "User",
+      dietLevel: "vegan",
+      extraForbiddenTags: [],
+      preferredCuisines: ["Chinese"],
+      cookingStylePreferences: ["Spicy"],
+      sproutName: "Albert",
+    });
   }
+  
+  const userObjectId = user._id;
   
   const impact = await UserImpactStorage.findOne({ user_id: userObjectId });
   const recipes = await RecipeStorage.find({ userId: userObjectId });

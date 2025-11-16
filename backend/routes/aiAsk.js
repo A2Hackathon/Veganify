@@ -1,22 +1,21 @@
 import express from "express";
 import { getUserContext } from "../utils/userContext.js";
 import { answerWithContext } from "../utils/llmClient.js";
-import { toObjectId } from "../utils/objectIdHelper.js";
 
 const router = express.Router();
 
 // POST /ai/ask
 router.post("/ask", async (req, res) => {
   const { userId, user_id, question } = req.body;
-  const actualUserId = userId || user_id; // Support both for backward compatibility
 
-  if (!actualUserId || !question) {
-    return res.status(400).json({ error: "userId/user_id and question required" });
+  if (!question) {
+    return res.status(400).json({ error: "question required" });
   }
 
   try {
-    // getUserContext handles ALBERT_SHARED_USER internally, so pass it directly
-    const context = await getUserContext(actualUserId);
+    // ALWAYS use the default Albert user - no userId required
+    // This allows chatbot to work without onboarding
+    const context = await getUserContext("ALBERT_SHARED_USER");
     const answer = await answerWithContext(context, question);
     res.json({ answer });
   } catch (err) {

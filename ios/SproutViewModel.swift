@@ -244,32 +244,40 @@ class SproutViewModel: ObservableObject {
     }
     
     func sendChatMessage(_ text: String) async {
-        // Always use shared Albert user ID - chatbot works even without onboarding
-        let userId = Self.SHARED_ALBERT_USER_ID
-        
-        // Try to load profile if not loaded, but don't block chatbot
-        if userProfile == nil {
-            print("🔄 Profile not loaded for chatbot, loading in background...")
-            Task {
-                await loadProfile()
-            }
-        }
+        // Chatbot works without onboarding - always uses default Albert user
+        // No need to load profile first
         
         isLoading = true
         defer { isLoading = false }
         
-        print("💬 Sending chat message to backend as Albert:", text)
+        print("💬 Sending chat message to backend (using default Albert user):", text)
         do {
-            let response = try await apiClient.sendChatMessage(userId: userId, question: text)
+            // userId is ignored by backend - it always uses Albert
+            let response = try await apiClient.sendChatMessage(userId: Self.SHARED_ALBERT_USER_ID, question: text)
             print("✅ Received AI response:", response.answer)
             await MainActor.run {
                 let message = ChatMessage(isUser: false, text: response.answer)
                 chatMessages.append(message)
             }
+        } catch let urlError as URLError {
+            print("❌ Chatbot connection error: \(urlError.localizedDescription)")
+            print("   Error code: \(urlError.code.rawValue)")
+            
+            var errorMsg = "Cannot connect to server."
+            if urlError.code == .cannotConnectToHost || urlError.code == .notConnectedToInternet {
+                errorMsg = "Cannot connect to server. Make sure the backend is running on port 4000."
+            } else if urlError.code == .timedOut {
+                errorMsg = "Connection timed out. Please check your network connection."
+            }
+            
+            await MainActor.run {
+                errorMessage = errorMsg
+                chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't connect to the server. Please make sure the backend is running."))
+            }
         } catch {
             print("❌ Chatbot error: \(error)")
-            errorMessage = "Failed to send message: \(error.localizedDescription)"
             await MainActor.run {
+                errorMessage = "Failed to send message: \(error.localizedDescription)"
                 chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't process that. Please try again."))
             }
         }

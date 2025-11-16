@@ -465,15 +465,16 @@ class APIClient {
     }
     
     func sendChatMessage(userId: String, question: String) async throws -> ChatResponse {
+        // userId is optional - backend always uses Albert user
         struct Request: Encodable {
-            let userId: String
             let question: String
+            // userId is optional - backend ignores it and uses Albert
         }
         
         return try await request(
             endpoint: "/ai/ask",
             method: "POST",
-            body: Request(userId: userId, question: question)
+            body: Request(question: question)
         )
     }
     
