@@ -12,14 +12,18 @@ router.get("/", async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.status(400).json({ error: "userId required" });
 
-    // Handle ALBERT_SHARED_USER
-    let user;
-    if (userId === "ALBERT_SHARED_USER") {
-      user = await UserStorage.findOne({ sproutName: "Albert" });
-      if (!user) return res.status(404).json({ error: "Albert user not found" });
-    } else {
-      user = await UserStorage.findById(userId);
-      if (!user) return res.status(404).json({ error: "User not found" });
+    // ALWAYS use the single Albert user
+    let user = await UserStorage.findOne({ sproutName: "Albert" });
+    if (!user) {
+      // Create Albert if it doesn't exist
+      user = await UserStorage.create({
+        name: "User",
+        dietLevel: "vegan",
+        extraForbiddenTags: [],
+        preferredCuisines: ["Chinese"],
+        cookingStylePreferences: ["Spicy"],
+        sproutName: "Albert",
+      });
     }
 
     const items = await GroceryItemStorage.find({ userId: user._id });
@@ -46,14 +50,18 @@ router.post("/", async (req, res) => {
     if (!userId || !name)
       return res.status(400).json({ error: "userId and name required" });
 
-    // Handle ALBERT_SHARED_USER
-    let user;
-    if (userId === "ALBERT_SHARED_USER") {
-      user = await UserStorage.findOne({ sproutName: "Albert" });
-      if (!user) return res.status(404).json({ error: "Albert user not found" });
-    } else {
-      user = await UserStorage.findById(userId);
-      if (!user) return res.status(404).json({ error: "User not found" });
+    // ALWAYS use the single Albert user
+    let user = await UserStorage.findOne({ sproutName: "Albert" });
+    if (!user) {
+      // Create Albert if it doesn't exist
+      user = await UserStorage.create({
+        name: "User",
+        dietLevel: "vegan",
+        extraForbiddenTags: [],
+        preferredCuisines: ["Chinese"],
+        cookingStylePreferences: ["Spicy"],
+        sproutName: "Albert",
+      });
     }
 
     const item = await GroceryItemStorage.create({
@@ -84,14 +92,18 @@ router.post("/scan-fridge", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: "image required" });
     }
 
-    // Handle ALBERT_SHARED_USER
-    let user;
-    if (userId === "ALBERT_SHARED_USER") {
-      user = await UserStorage.findOne({ sproutName: "Albert" });
-      if (!user) return res.status(404).json({ error: "Albert user not found" });
-    } else {
-      user = await UserStorage.findById(userId);
-      if (!user) return res.status(404).json({ error: "User not found" });
+    // ALWAYS use the single Albert user
+    let user = await UserStorage.findOne({ sproutName: "Albert" });
+    if (!user) {
+      // Create Albert if it doesn't exist
+      user = await UserStorage.create({
+        name: "User",
+        dietLevel: "vegan",
+        extraForbiddenTags: [],
+        preferredCuisines: ["Chinese"],
+        cookingStylePreferences: ["Spicy"],
+        sproutName: "Albert",
+      });
     }
 
     // OCR the image
@@ -136,14 +148,18 @@ router.post("/scan-receipt", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: "image required" });
     }
 
-    // Handle ALBERT_SHARED_USER
-    let user;
-    if (userId === "ALBERT_SHARED_USER") {
-      user = await UserStorage.findOne({ sproutName: "Albert" });
-      if (!user) return res.status(404).json({ error: "Albert user not found" });
-    } else {
-      user = await UserStorage.findById(userId);
-      if (!user) return res.status(404).json({ error: "User not found" });
+    // ALWAYS use the single Albert user
+    let user = await UserStorage.findOne({ sproutName: "Albert" });
+    if (!user) {
+      // Create Albert if it doesn't exist
+      user = await UserStorage.create({
+        name: "User",
+        dietLevel: "vegan",
+        extraForbiddenTags: [],
+        preferredCuisines: ["Chinese"],
+        cookingStylePreferences: ["Spicy"],
+        sproutName: "Albert",
+      });
     }
 
     const result = await Tesseract.recognize(req.file.path, "eng");

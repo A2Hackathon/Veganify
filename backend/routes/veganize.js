@@ -20,14 +20,18 @@ router.post("/analyze", async (req, res) => {
       return res.status(400).json({ error: "userId/userID and recipeText/recipe required" });
     }
 
-    // Handle ALBERT_SHARED_USER
-    let user;
-    if (actualUserId === "ALBERT_SHARED_USER") {
-      user = await UserStorage.findOne({ sproutName: "Albert" });
-      if (!user) return res.status(404).json({ error: "Albert user not found" });
-    } else {
-      user = await UserStorage.findById(actualUserId);
-      if (!user) return res.status(404).json({ error: "User not found" });
+    // ALWAYS use the single Albert user
+    let user = await UserStorage.findOne({ sproutName: "Albert" });
+    if (!user) {
+      // Create Albert if it doesn't exist
+      user = await UserStorage.create({
+        name: "User",
+        dietLevel: "vegan",
+        extraForbiddenTags: [],
+        preferredCuisines: ["Chinese"],
+        cookingStylePreferences: ["Spicy"],
+        sproutName: "Albert",
+      });
     }
 
     const ingredients = await extractIngredients(recipeContent);

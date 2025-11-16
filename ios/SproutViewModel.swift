@@ -105,9 +105,9 @@ class SproutViewModel: ObservableObject {
             id: Self.SHARED_ALBERT_USER_ID, // Use shared ID
             userName: "User",
             eatingStyle: EatingStyle.vegan.rawValue,
-            dietaryRestrictions: [], // No dietary restrictions
-            cuisinePreferences: [], // No cuisine preferences
-            cookingStylePreferences: [], // No cooking style preferences
+            dietaryRestrictions: [], // No additional dietary restrictions (vegan is the eating style)
+            cuisinePreferences: ["Chinese"], // Asian cuisine preference
+            cookingStylePreferences: ["Spicy"], // Spicy cooking style
             sproutName: "Albert",
             level: 1,
             xp: 0,

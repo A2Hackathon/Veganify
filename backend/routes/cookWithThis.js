@@ -22,20 +22,23 @@ router.post("/", async (req, res, next) => {
       return res.status(400).json({ error: "user_id is required to get groceries" });
     }
 
-    // Handle ALBERT_SHARED_USER - convert user_id to userId format
-    const userId = user_id === "ALBERT_SHARED_USER" ? "ALBERT_SHARED_USER" : user_id;
-    
-    // Get all groceries for this user
-    let groceries = [];
-    if (userId === "ALBERT_SHARED_USER") {
-      const { UserStorage } = await import("../utils/jsonStorage.js");
-      const user = await UserStorage.findOne({ sproutName: "Albert" });
-      if (user) {
-        groceries = await GroceryItemStorage.find({ userId: user._id });
-      }
-    } else {
-      groceries = await GroceryItemStorage.find({ userId });
+    // ALWAYS use the single Albert user
+    const { UserStorage } = await import("../utils/jsonStorage.js");
+    let user = await UserStorage.findOne({ sproutName: "Albert" });
+    if (!user) {
+      // Create Albert if it doesn't exist
+      user = await UserStorage.create({
+        name: "User",
+        dietLevel: "vegan",
+        extraForbiddenTags: [],
+        preferredCuisines: ["Chinese"],
+        cookingStylePreferences: ["Spicy"],
+        sproutName: "Albert",
+      });
     }
+    
+    // Get all groceries for Albert
+    const groceries = await GroceryItemStorage.find({ userId: user._id });
 
     // Convert to ingredient names
     const ingredients = groceries.map(g => g.name);
@@ -48,18 +51,8 @@ router.post("/", async (req, res, next) => {
     let progress = null;
 
     if (user_id) {
-      // Get user ID for impact
-      let userObjectId;
-      if (userId === "ALBERT_SHARED_USER") {
-        const { UserStorage } = await import("../utils/jsonStorage.js");
-        const user = await UserStorage.findOne({ sproutName: "Albert" });
-        if (!user) {
-          return res.json({ recipes, progress: null });
-        }
-        userObjectId = user._id;
-      } else {
-        userObjectId = userId;
-      }
+      // Use Albert's ID for impact
+      const userObjectId = user._id;
 
       // find or create UserImpact (ensure required structure)
       let impact = await UserImpactStorage.findOne({ user_id: userObjectId });

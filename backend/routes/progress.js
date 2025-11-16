@@ -46,14 +46,18 @@ router.post("/complete-mission", async (req, res) => {
     if (!userId || !missionId)
       return res.status(400).json({ error: "userId and missionId required" });
 
-    // Handle ALBERT_SHARED_USER
-    let user;
-    if (userId === "ALBERT_SHARED_USER") {
-      user = await UserStorage.findOne({ sproutName: "Albert" });
-      if (!user) return res.status(404).json({ error: "Albert user not found" });
-    } else {
-      user = await UserStorage.findById(userId);
-      if (!user) return res.status(404).json({ error: "User not found" });
+    // ALWAYS use the single Albert user
+    let user = await UserStorage.findOne({ sproutName: "Albert" });
+    if (!user) {
+      // Create Albert if it doesn't exist
+      user = await UserStorage.create({
+        name: "User",
+        dietLevel: "vegan",
+        extraForbiddenTags: [],
+        preferredCuisines: ["Chinese"],
+        cookingStylePreferences: ["Spicy"],
+        sproutName: "Albert",
+      });
     }
 
     let impact = await UserImpactStorage.findOne({ user_id: user._id });

@@ -49,8 +49,8 @@ router.get("/", async (req, res) => {
           name: "User",
           dietLevel: "vegan",
           extraForbiddenTags: [],
-          preferredCuisines: [],
-          cookingStylePreferences: [],
+          preferredCuisines: ["Chinese"],
+          cookingStylePreferences: ["Spicy"],
           sproutName: "Albert",
         });
         
@@ -74,9 +74,20 @@ router.get("/", async (req, res) => {
         console.log("✅ Found existing shared Albert user:", user._id);
       }
     } else {
-      // Regular user lookup by ID
-      user = await UserStorage.findById(userId);
-      if (!user) return res.status(404).json({ error: "User not found" });
+      // All users must use Albert - redirect to Albert user
+      console.log("⚠️ Non-Albert userId provided, redirecting to Albert user");
+      user = await UserStorage.findOne({ sproutName: "Albert" });
+      if (!user) {
+        // Create Albert if it doesn't exist
+        user = await UserStorage.create({
+          name: "User",
+          dietLevel: "vegan",
+          extraForbiddenTags: [],
+          preferredCuisines: ["Chinese"],
+          cookingStylePreferences: ["Spicy"],
+          sproutName: "Albert",
+        });
+      }
     }
 
     // Get user's ID for impact lookup
@@ -129,16 +140,20 @@ router.patch("/", async (req, res) => {
     let user;
     let userObjectId;
     
-    // Handle shared Albert user
-    if (userId === "ALBERT_SHARED_USER") {
-      user = await UserStorage.findOne({ sproutName: "Albert" });
-      if (!user) return res.status(404).json({ error: "Albert user not found" });
-      userObjectId = user._id;
-    } else {
-      user = await UserStorage.findById(userId);
-      if (!user) return res.status(404).json({ error: "User not found" });
-      userObjectId = user._id;
+    // ALWAYS use the single Albert user
+    user = await UserStorage.findOne({ sproutName: "Albert" });
+    if (!user) {
+      // Create Albert if it doesn't exist
+      user = await UserStorage.create({
+        name: "User",
+        dietLevel: "vegan",
+        extraForbiddenTags: [],
+        preferredCuisines: ["Chinese"],
+        cookingStylePreferences: ["Spicy"],
+        sproutName: "Albert",
+      });
     }
+    userObjectId = user._id;
 
     // Convert eatingStyle back to dietLevel
     let dietLevel = user.dietLevel;

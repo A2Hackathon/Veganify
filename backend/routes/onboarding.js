@@ -37,41 +37,29 @@ router.post("/profile", async (req, res) => {
 
     const dietLevel = eatingStyleToDietLevel(eatingStyle);
 
-    // If creating Albert profile, check if it already exists
-    let user;
-    if (sproutName === "Albert") {
-      console.log("🔍 Checking for existing Albert user...");
-      user = await UserStorage.findOne({ sproutName: "Albert" });
-      
-      if (user) {
-        console.log("✅ Found existing Albert user, updating preferences...");
-        // Update existing Albert user with new preferences
-        user = await UserStorage.findByIdAndUpdate(user._id, {
-          dietLevel,
-          extraForbiddenTags: dietaryRestrictions || [],
-          preferredCuisines: cuisinePreferences || [],
-          cookingStylePreferences: cookingStylePreferences || [],
-        });
-      } else {
-        console.log("🌱 Creating new Albert user...");
-        user = await UserStorage.create({
-          name: "User",
-          dietLevel,
-          extraForbiddenTags: dietaryRestrictions || [],
-          preferredCuisines: cuisinePreferences || [],
-          cookingStylePreferences: cookingStylePreferences || [],
-          sproutName: "Albert",
-        });
-      }
+    // ALWAYS use the single Albert user - find or create
+    console.log("🔍 Ensuring single Albert user exists...");
+    let user = await UserStorage.findOne({ sproutName: "Albert" });
+    
+    if (user) {
+      console.log("✅ Found existing Albert user, updating preferences...");
+      // Update existing Albert user with new preferences
+      user = await UserStorage.findByIdAndUpdate(user._id, {
+        dietLevel: dietLevel || "vegan",
+        extraForbiddenTags: dietaryRestrictions || [],
+        preferredCuisines: cuisinePreferences || ["Chinese"],
+        cookingStylePreferences: cookingStylePreferences || ["Spicy"],
+        sproutName: "Albert", // Always Albert
+      });
     } else {
-      // Create new user for non-Albert sprout names
+      console.log("🌱 Creating single Albert user...");
       user = await UserStorage.create({
         name: "User",
-        dietLevel,
+        dietLevel: dietLevel || "vegan",
         extraForbiddenTags: dietaryRestrictions || [],
-        preferredCuisines: cuisinePreferences || [],
-        cookingStylePreferences: cookingStylePreferences || [],
-        sproutName: sproutName || "Albert",
+        preferredCuisines: cuisinePreferences || ["Chinese"],
+        cookingStylePreferences: cookingStylePreferences || ["Spicy"],
+        sproutName: "Albert", // Always Albert
       });
     }
 
