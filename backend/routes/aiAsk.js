@@ -13,15 +13,16 @@ router.post("/ask", async (req, res) => {
   }
 
   try {
-    // ALWAYS use the default Albert user - no userId required
-    // This allows chatbot to work without onboarding
     const context = await getUserContext("ALBERT_SHARED_USER");
+    console.log("Calling AI with question:", question);
     const answer = await answerWithContext(context, question);
+    console.log("AI response received:", answer.substring(0, 100));
     res.json({ answer });
   } catch (err) {
     console.error("ai/ask error:", err);
     console.error("   Error details:", err.message);
-    res.status(500).json({ error: "Failed to get AI answer" });
+    console.error("   Error stack:", err.stack);
+    res.status(500).json({ error: "Failed to get AI answer", message: err.message });
   }
 });
 

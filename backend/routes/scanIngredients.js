@@ -19,7 +19,7 @@ function mapStatus(s) {
 /*  
 =========================================================
   POST /scan/ingredients  
-  → OCR image → ingredient list → classification
+  ??OCR image ??ingredient list ??classification
 =========================================================
 */
 router.post("/", upload.single("image"), async (req, res) => {
@@ -74,7 +74,7 @@ router.post("/", upload.single("image"), async (req, res) => {
 /*  
 =========================================================
   POST /scan/ingredients/text  
-  → Manual input text → classification
+  ??Manual input text ??classification
 =========================================================
 */
 router.post("/text", async (req, res) => {

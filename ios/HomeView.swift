@@ -8,6 +8,15 @@ struct HomeView: View {
     @State private var showingStreak = false
     @State private var sproutScale: CGFloat = 1.0
     
+    // Safe progress values for ProgressView (clamped to valid range)
+    private var safeXpTotal: Int {
+        max(vm.xpToNextLevel, 1) // Ensure total is at least 1
+    }
+    
+    private var safeXpValue: Int {
+        min(max(vm.xp, 0), safeXpTotal) // Clamp value between 0 and total
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -105,7 +114,7 @@ struct HomeView: View {
                                     
                                     // Enhanced XP bar
                                     VStack(spacing: 6) {
-                                        ProgressView(value: Double(vm.xp), total: Double(vm.xpToNextLevel))
+                                        ProgressView(value: Double(safeXpValue), total: Double(safeXpTotal))
                                             .progressViewStyle(.linear)
                                             .tint(
                                                 LinearGradient(

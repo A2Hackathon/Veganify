@@ -161,36 +161,76 @@ Return STRICT JSON:
 // 4. Answer with context
 //
 export async function answerWithContext(userContext, userQuestion) {
-  const prompt = `
-You are an AI assistant with access to the user's data.
+  const isRecipeRequest = /make|create|recipe|cook|prepare|how to make|show me|give me/i.test(userQuestion);
+  
+  const systemPrompt = `You are a friendly vegan cooking assistant named Sprout. You help users with vegan recipes, cooking tips, and dietary questions. Be conversational, helpful, and enthusiastic about plant-based cooking. Always respond naturally to greetings and questions.`;
 
-CONTEXT:
-${JSON.stringify(userContext, null, 2)}
+  let userPrompt;
+  
+  if (isRecipeRequest) {
+    userPrompt = `The user is asking for a recipe. Generate a COMPLETE vegan recipe with the following format:
 
-QUESTION:
-"${userQuestion}"
+RECIPE TITLE: [Creative, descriptive name]
 
-Rules:
-- Prefer database context.
-- Use general knowledge only when needed.
-- Be concise.
-`;
+INGREDIENTS:
+- [ingredient 1] - [amount]
+- [ingredient 2] - [amount]
+- [continue for all ingredients]
+
+INSTRUCTIONS:
+1. [Step 1 - detailed cooking instruction]
+2. [Step 2 - detailed cooking instruction]
+3. [Continue with all steps]
+
+COOKING TIME: [estimated time]
+
+User's question: "${userQuestion}"
+
+User preferences:
+- Diet: ${userContext?.user?.dietLevel || "vegan"}
+- Preferred cuisines: ${userContext?.user?.preferredCuisines?.join(", ") || "none"}
+- Cooking style: ${userContext?.user?.cookingStylePreferences?.join(", ") || "none"}
+
+IMPORTANT: Generate a FULL, DETAILED recipe with all ingredients and step-by-step instructions. Do NOT just list the ingredients. Include cooking methods, temperatures, times, and helpful tips.`;
+  } else {
+    userPrompt = `User question: "${userQuestion}"
+
+User context (for reference):
+- Diet: ${userContext?.user?.dietLevel || "vegan"}
+- Preferred cuisines: ${userContext?.user?.preferredCuisines?.join(", ") || "none"}
+- Cooking style: ${userContext?.user?.cookingStylePreferences?.join(", ") || "none"}
+- Saved recipes: ${userContext?.recipes?.length || 0}
+- XP: ${userContext?.impact?.xp || 0}
+
+Answer the user's question naturally. If it's a greeting, respond warmly. If it's about cooking or recipes, use the context when helpful.`;
+  }
 
   try {
     const response = await client.chat.completions.create({
       model: MODEL,
       messages: [
-        { role: "system", content: "Answer using context when relevant." },
-        { role: "user", content: prompt },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
       ],
+      temperature: 0.8,
     });
 
     const raw = response.choices?.[0]?.message?.content || "";
     const text = raw.trim();
-    return text || "Sorry, I couldn't answer that.";
+    
+    if (!text) {
+      console.error("Empty response from AI");
+      return "I'm here to help! What would you like to cook today?";
+    }
+    
+    return text;
   } catch (err) {
     console.error("answerWithContext error:", err);
-    return "Sorry, I couldn't answer that.";
+    console.error("Error details:", err.message);
+    if (err.response) {
+      console.error("API response:", err.response.data);
+    }
+    return "I'm having trouble connecting right now. Please try again in a moment.";
   }
 }
 

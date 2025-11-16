@@ -165,9 +165,9 @@ router.post("/veganize", async (req, res) => {
     }
 
     // Extract ingredients
-    console.log("üîç Calling LLM (extractIngredients) for recipe veganization...");
+    console.log("?îç Calling LLM (extractIngredients) for recipe veganization...");
     const ingredients = await extractIngredients(inputText);
-    console.log("‚úÖ LLM extracted", ingredients.length, "ingredients");
+    console.log("??LLM extracted", ingredients.length, "ingredients");
 
     // Get substitutions
     const substitutions = JSON.parse(readFileSync(join(__dirname, "../config/substitutions.json"), "utf-8"));
@@ -188,9 +188,9 @@ router.post("/veganize", async (req, res) => {
     }
 
     // Rewrite recipe
-    console.log("üîç Calling LLM (rewriteRecipeSteps) to veganize recipe...");
+    console.log("?îç Calling LLM (rewriteRecipeSteps) to veganize recipe...");
     const rewritten = await rewriteRecipeSteps(adaptedIngredients, inputText);
-    console.log("‚úÖ LLM rewrote recipe successfully");
+    console.log("??LLM rewrote recipe successfully");
 
     // Convert to steps array
     const steps = rewritten

@@ -3,7 +3,6 @@ import { UserStorage, UserImpactStorage } from "../utils/jsonStorage.js";
 
 const router = express.Router();
 
-// helper: map EatingStyle display string → backend code
 function eatingStyleToDietLevel(eatingStyle) {
   if (!eatingStyle) return "flexitarian";
   const val = eatingStyle.toLowerCase();
@@ -16,7 +15,6 @@ function eatingStyleToDietLevel(eatingStyle) {
   return "flexitarian";
 }
 
-// POST /onboarding/profile
 router.post("/profile", async (req, res) => {
   try {
     const {
@@ -27,7 +25,7 @@ router.post("/profile", async (req, res) => {
       sproutName,
     } = req.body;
 
-    console.log("🌱 POST /onboarding/profile - Creating new user:", {
+    console.log("POST /onboarding/profile - Creating new user:", {
       eatingStyle,
       dietaryRestrictions: dietaryRestrictions?.length || 0,
       cuisinePreferences: cuisinePreferences?.length || 0,
@@ -37,33 +35,31 @@ router.post("/profile", async (req, res) => {
 
     const dietLevel = eatingStyleToDietLevel(eatingStyle);
 
-    // ALWAYS use the single Albert user - find or create
-    console.log("🔍 Ensuring single Albert user exists...");
+    console.log("Ensuring single Albert user exists...");
     let user = await UserStorage.findOne({ sproutName: "Albert" });
     
     if (user) {
-      console.log("✅ Found existing Albert user, updating preferences...");
-      // Update existing Albert user with new preferences
+      console.log("Found existing Albert user, updating preferences...");
       user = await UserStorage.findByIdAndUpdate(user._id, {
         dietLevel: dietLevel || "vegan",
         extraForbiddenTags: dietaryRestrictions || [],
         preferredCuisines: cuisinePreferences || ["Chinese"],
         cookingStylePreferences: cookingStylePreferences || ["Spicy"],
-        sproutName: "Albert", // Always Albert
+        sproutName: "Albert",
       });
     } else {
-      console.log("🌱 Creating single Albert user...");
+      console.log("Creating single Albert user...");
       user = await UserStorage.create({
         name: "User",
         dietLevel: dietLevel || "vegan",
         extraForbiddenTags: dietaryRestrictions || [],
         preferredCuisines: cuisinePreferences || ["Chinese"],
         cookingStylePreferences: cookingStylePreferences || ["Spicy"],
-        sproutName: "Albert", // Always Albert
+        sproutName: "Albert",
       });
     }
 
-    console.log("✅ User created in JSON storage with ID:", user._id);
+    console.log("User created in JSON storage with ID:", user._id);
 
     try {
       await UserImpactStorage.create({
@@ -74,10 +70,9 @@ router.post("/profile", async (req, res) => {
         total_meals_logged: 0,
         forest_stage: "SEED",
       });
-      console.log("✅ UserImpact created for user:", user._id);
+      console.log("UserImpact created for user:", user._id);
     } catch (impactErr) {
-      console.error("⚠️ Failed to create UserImpact (non-critical):", impactErr.message);
-      // Continue even if UserImpact creation fails
+      console.error("Failed to create UserImpact (non-critical):", impactErr.message);
     }
 
     const profile = {
@@ -95,13 +90,12 @@ router.post("/profile", async (req, res) => {
       streakDays: 0,
     };
 
-    console.log("✅ Sending profile response to client");
+    console.log("Sending profile response to client");
     res.json(profile);
   } catch (err) {
-    console.error("❌ Create profile error:", err);
+    console.error("Create profile error:", err);
     console.error("   Error stack:", err.stack);
     
-    // Ensure response is sent even on error
     if (!res.headersSent) {
       res.status(500).json({ 
         error: "Failed to create profile",

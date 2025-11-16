@@ -39,11 +39,11 @@ router.get("/", async (req, res) => {
     
     // Handle shared Albert user - find or create user with sproutName "Albert"
     if (userId === "ALBERT_SHARED_USER") {
-      console.log("ðŸ” Looking for shared Albert user...");
+      console.log("?” Looking for shared Albert user...");
       user = await UserStorage.findOne({ sproutName: "Albert" });
       
       if (!user) {
-        console.log("ðŸŒ± Shared Albert user not found, creating...");
+        console.log("?Œ± Shared Albert user not found, creating...");
         // Create shared Albert user
         user = await UserStorage.create({
           name: "User",
@@ -64,18 +64,18 @@ router.get("/", async (req, res) => {
             total_meals_logged: 0,
             forest_stage: "SEED",
           });
-          console.log("âœ… UserImpact created for shared Albert user");
+          console.log("??UserImpact created for shared Albert user");
         } catch (impactErr) {
-          console.error("âš ï¸ Failed to create UserImpact for Albert (non-critical):", impactErr.message);
+          console.error("? ï¸ Failed to create UserImpact for Albert (non-critical):", impactErr.message);
         }
         
-        console.log("âœ… Shared Albert user created with ID:", user._id);
+        console.log("??Shared Albert user created with ID:", user._id);
       } else {
-        console.log("âœ… Found existing shared Albert user:", user._id);
+        console.log("??Found existing shared Albert user:", user._id);
       }
     } else {
       // All users must use Albert - redirect to Albert user
-      console.log("âš ï¸ Non-Albert userId provided, redirecting to Albert user");
+      console.log("? ï¸ Non-Albert userId provided, redirecting to Albert user");
       user = await UserStorage.findOne({ sproutName: "Albert" });
       if (!user) {
         // Create Albert if it doesn't exist
@@ -126,7 +126,7 @@ router.patch("/", async (req, res) => {
     const profile = req.body;
     const userId = profile.id;
 
-    console.log("ðŸ“ PATCH /profile - Received update request:", {
+    console.log("?“ PATCH /profile - Received update request:", {
       userId,
       eatingStyle: profile.eatingStyle,
       dietaryRestrictions: profile.dietaryRestrictions?.length || 0,
@@ -178,7 +178,7 @@ router.patch("/", async (req, res) => {
       sproutName: profile.sproutName || user.sproutName,
     });
     
-    console.log("âœ… Profile saved to JSON storage:", {
+    console.log("??Profile saved to JSON storage:", {
       userId: user._id,
       dietLevel: user.dietLevel,
       extraForbiddenTags: user.extraForbiddenTags.length,
