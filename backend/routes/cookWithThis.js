@@ -3,6 +3,7 @@ import express from "express";
 import { generateRecipes } from "../utils/llmClient.js";
 import UserImpact from "../models/UserImpact.js";
 import Grocery from "../models/grocery.js";
+import { toObjectId } from "../utils/objectIdHelper.js";
 const router = express.Router();
 
 /**
@@ -23,8 +24,10 @@ if (!user_id) {
   return res.status(400).json({ error: "user_id is required to get groceries" });
 }
 
+const userObjectId = toObjectId(user_id);
+
 // Get all groceries for this user
-const groceries = await Grocery.find({ userID: user_id }).lean();
+const groceries = await Grocery.find({ userID: userObjectId }).lean();
 
 // Convert to ingredient names
 const ingredients = groceries.map(g => g.name);
@@ -39,11 +42,11 @@ const ingredients = groceries.map(g => g.name);
 
     if (user_id) {
       // find or create UserImpact (ensure required structure)
-      let impact = await UserImpact.findOne({ user_id });
+      let impact = await UserImpact.findOne({ user_id: userObjectId });
 
       if (!impact) {
         impact = await UserImpact.create({
-          user_id,
+          user_id: userObjectId,
           xp: 0,
           total_meals_logged: 0,
           streak: 0,

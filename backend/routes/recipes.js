@@ -2,6 +2,7 @@ import express from "express";
 import Recipe from "../models/Recipe.js";
 import User from "../models/User.js";
 import { generateRecipes, extractIngredients, rewriteRecipeSteps } from "../utils/llmClient.js";
+import { toObjectId } from "../utils/objectIdHelper.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -19,14 +20,15 @@ router.post("/generate", async (req, res) => {
       return res.status(400).json({ error: "userId required" });
     }
 
-    const user = await User.findById(userId).lean();
+    const userObjectId = toObjectId(userId);
+    const user = await User.findById(userObjectId).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
     // If ingredients not provided, fetch from grocery list
     let ingredientsList = ingredients;
     if (!Array.isArray(ingredientsList) || ingredientsList.length === 0) {
       const GroceryItem = (await import("../models/GroceryItem.js")).default;
-      const groceryItems = await GroceryItem.find({ userId }).lean();
+      const groceryItems = await GroceryItem.find({ userId: userObjectId }).lean();
       ingredientsList = groceryItems.map(item => item.name);
     }
 
@@ -39,7 +41,7 @@ router.post("/generate", async (req, res) => {
     const saved = [];
     for (const r of generated) {
       const recipe = await Recipe.create({
-        userId,
+        userId: userObjectId,
         title: r.title || "Untitled",
         tags: r.tags || [],
         duration: r.duration || "",
@@ -87,8 +89,9 @@ router.post("/save", async (req, res) => {
       return res.status(400).json({ error: "userId and title required" });
     }
 
+    const userObjectId = toObjectId(userId);
     const recipe = await Recipe.create({
-      userId,
+      userId: userObjectId,
       title,
       tags: recipeData.tags || [],
       duration: recipeData.duration || "",
@@ -127,7 +130,8 @@ router.post("/veganize", async (req, res) => {
       return res.status(400).json({ error: "userId and inputText required" });
     }
 
-    const user = await User.findById(userId).lean();
+    const userObjectId = toObjectId(userId);
+    const user = await User.findById(userObjectId).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
     // Extract ingredients
@@ -175,7 +179,7 @@ router.post("/veganize", async (req, res) => {
 
     // Save recipe
     const recipe = await Recipe.create({
-      userId,
+      userId: userObjectId,
       title: "Veganized Recipe",
       tags: ["veganized"],
       duration: "30 min",
@@ -214,7 +218,8 @@ router.get("/saved", async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.status(400).json({ error: "userId required" });
 
-    const recipes = await Recipe.find({ userId }).lean();
+    const userObjectId = toObjectId(userId);
+    const recipes = await Recipe.find({ userId: userObjectId }).lean();
 
     const result = recipes.map((r) => ({
       id: r._id.toString(),

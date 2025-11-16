@@ -1,6 +1,7 @@
 import express from "express";
 import User from "../models/User.js";
 import UserImpact from "../models/UserImpact.js";
+import { toObjectId } from "../utils/objectIdHelper.js";
 
 const router = express.Router();
 
@@ -49,16 +50,20 @@ router.post("/profile", async (req, res) => {
 
     console.log("✅ User created in MongoDB with ID:", user._id.toString());
 
-    await UserImpact.create({
-      user_id: user._id,
-      xp: 0,
-      coins: 0,
-      streak_days: 0,
-      total_meals_logged: 0,
-      forest_stage: "SEED",
-    });
-
-    console.log("✅ UserImpact created for user:", user._id.toString());
+    try {
+      await UserImpact.create({
+        user_id: user._id,
+        xp: 0,
+        coins: 0,
+        streak_days: 0,
+        total_meals_logged: 0,
+        forest_stage: "SEED",
+      });
+      console.log("✅ UserImpact created for user:", user._id.toString());
+    } catch (impactErr) {
+      console.error("⚠️ Failed to create UserImpact (non-critical):", impactErr.message);
+      // Continue even if UserImpact creation fails
+    }
 
     const profile = {
       id: user._id.toString(),
@@ -75,10 +80,19 @@ router.post("/profile", async (req, res) => {
       streakDays: 0,
     };
 
+    console.log("✅ Sending profile response to client");
     res.json(profile);
   } catch (err) {
-    console.error("Create profile error:", err);
-    res.status(500).json({ error: "Failed to create profile" });
+    console.error("❌ Create profile error:", err);
+    console.error("   Error stack:", err.stack);
+    
+    // Ensure response is sent even on error
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: "Failed to create profile",
+        message: err.message 
+      });
+    }
   }
 });
 

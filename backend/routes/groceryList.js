@@ -3,6 +3,7 @@ import GroceryItem from "../models/GroceryItem.js";
 import User from "../models/User.js";
 import multer from "multer";
 import Tesseract from "tesseract.js";
+import { toObjectId } from "../utils/objectIdHelper.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -13,7 +14,8 @@ router.get("/", async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.status(400).json({ error: "userId required" });
 
-    const items = await GroceryItem.find({ userId }).lean();
+    const userObjectId = toObjectId(userId);
+    const items = await GroceryItem.find({ userId: userObjectId }).lean();
 
     const result = items.map((i) => ({
       id: i._id.toString(),
@@ -37,11 +39,12 @@ router.post("/", async (req, res) => {
     if (!userId || !name)
       return res.status(400).json({ error: "userId and name required" });
 
-    const user = await User.findById(userId).lean();
+    const userObjectId = toObjectId(userId);
+    const user = await User.findById(userObjectId).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
     const item = await GroceryItem.create({
-      userId,
+      userId: userObjectId,
       name,
       category: category || "Uncategorized",
     });
@@ -68,6 +71,8 @@ router.post("/scan-fridge", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: "image required" });
     }
 
+    const userObjectId = toObjectId(userId);
+
     // OCR the image
     const result = await Tesseract.recognize(req.file.path, "eng");
     const text = result.data.text || "";
@@ -81,7 +86,7 @@ router.post("/scan-fridge", upload.single("image"), async (req, res) => {
     const createdItems = [];
     for (const line of lines) {
       const item = await GroceryItem.create({
-        userId,
+        userId: userObjectId,
         name: line,
         category: "Uncategorized",
       });
@@ -110,6 +115,8 @@ router.post("/scan-receipt", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: "image required" });
     }
 
+    const userObjectId = toObjectId(userId);
+
     const result = await Tesseract.recognize(req.file.path, "eng");
     const text = result.data.text || "";
 
@@ -121,7 +128,7 @@ router.post("/scan-receipt", upload.single("image"), async (req, res) => {
     const createdItems = [];
     for (const line of lines) {
       const item = await GroceryItem.create({
-        userId,
+        userId: userObjectId,
         name: line,
         category: "Uncategorized",
       });

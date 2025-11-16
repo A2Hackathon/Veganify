@@ -19,8 +19,9 @@ class APIClient {
         #if targetEnvironment(simulator)
         self.baseURL = "http://localhost:4000"
         #else
-        // For physical device, using computer's IP address
-        self.baseURL = "http://10.2.146.143:4000"
+        // For physical device, replace with your computer's IP address
+        // Example: "http://192.168.1.100:4000"
+        self.baseURL = "http://localhost:4000" // ⚠️ Change this to your computer's IP for physical device
         #endif
         #else
         self.baseURL = "https://your-production-url.com"

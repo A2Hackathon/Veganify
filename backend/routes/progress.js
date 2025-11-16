@@ -1,6 +1,7 @@
 import express from "express";
 import UserImpact from "../models/UserImpact.js";
 import User from "../models/User.js";
+import { toObjectId } from "../utils/objectIdHelper.js";
 
 const router = express.Router();
 
@@ -47,13 +48,14 @@ router.post("/complete-mission", async (req, res) => {
     if (!userId || !missionId)
       return res.status(400).json({ error: "userId and missionId required" });
 
-    const user = await User.findById(userId).lean();
+    const userObjectId = toObjectId(userId);
+    const user = await User.findById(userObjectId).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    let impact = await UserImpact.findOne({ user_id: userId });
+    let impact = await UserImpact.findOne({ user_id: userObjectId });
     if (!impact) {
       impact = await UserImpact.create({
-        user_id: userId,
+        user_id: userObjectId,
         xp: 0,
         coins: 0,
         streak_days: 0,

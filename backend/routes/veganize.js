@@ -2,6 +2,7 @@ import express from "express";
 import User from "../models/User.js";
 import Recipe from "../models/Recipe.js";
 import { extractIngredients, rewriteRecipeSteps, isAllowedForUser } from "../utils/llmClient.js";
+import { toObjectId, toObjectIdSafe } from "../utils/objectIdHelper.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -21,7 +22,8 @@ router.post("/analyze", async (req, res) => {
       return res.status(400).json({ error: "userId/userID and recipeText/recipe required" });
     }
 
-    const user = await User.findById(actualUserId).lean();
+    const userObjectId = toObjectId(actualUserId);
+    const user = await User.findById(userObjectId).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
     const ingredients = await extractIngredients(recipeContent);
@@ -82,8 +84,10 @@ router.post("/commit", async (req, res) => {
 
     // userId is optional in commit route, but preferred if provided
     let user = null;
+    let userObjectId = null;
     if (actualUserId) {
-      user = await User.findById(actualUserId).lean();
+      userObjectId = toObjectId(actualUserId);
+      user = await User.findById(userObjectId).lean();
       if (!user) return res.status(404).json({ error: "User not found" });
     }
 
@@ -103,7 +107,7 @@ router.post("/commit", async (req, res) => {
     });
 
     const savedRecipe = await Recipe.create({
-      userId: actualUserId || null,
+      userId: userObjectId || null,
       title: "Veganized Recipe",
       tags: ["veganized"],
       duration: "",

@@ -1,6 +1,7 @@
 import express from "express";
 import User from "../models/User.js";
 import UserImpact from "../models/UserImpact.js";
+import { toObjectId } from "../utils/objectIdHelper.js";
 
 const router = express.Router();
 
@@ -36,10 +37,11 @@ router.get("/", async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.status(400).json({ error: "userId required" });
 
-    const user = await User.findById(userId).lean();
+    const userObjectId = toObjectId(userId);
+    const user = await User.findById(userObjectId).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const impact = await UserImpact.findOne({ user_id: userId }).lean();
+    const impact = await UserImpact.findOne({ user_id: userObjectId }).lean();
     const xp = impact?.xp || 0;
     const coins = impact?.coins || 0;
     const streakDays = impact?.streak_days || 0;
@@ -84,7 +86,8 @@ router.patch("/", async (req, res) => {
 
     if (!userId) return res.status(400).json({ error: "id required" });
 
-    const user = await User.findById(userId);
+    const userObjectId = toObjectId(userId);
+    const user = await User.findById(userObjectId);
     if (!user) return res.status(404).json({ error: "User not found" });
 
     // Update fields
@@ -116,7 +119,7 @@ router.patch("/", async (req, res) => {
       sproutName: user.sproutName
     });
 
-    const impact = await UserImpact.findOne({ user_id: userId }).lean();
+    const impact = await UserImpact.findOne({ user_id: userObjectId }).lean();
     const xp = impact?.xp || 0;
     const coins = impact?.coins || 0;
     const streakDays = impact?.streak_days || 0;

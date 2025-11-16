@@ -4,6 +4,7 @@ import multer from "multer";
 import Tesseract from "tesseract.js";
 import User from "../models/User.js";
 import { isAllowedForUser } from "../utils/llmClient.js";
+import { toObjectId } from "../utils/objectIdHelper.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -28,7 +29,8 @@ router.post("/", upload.single("image"), async (req, res) => {
     if (!userId) return res.status(400).json({ error: "userId required" });
     if (!req.file) return res.status(400).json({ error: "image required" });
 
-    const user = await User.findById(userId).lean();
+    const userObjectId = toObjectId(userId);
+    const user = await User.findById(userObjectId).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
     // OCR processing
@@ -75,7 +77,8 @@ router.post("/text", async (req, res) => {
       return res.status(400).json({ error: "userId and text required" });
     }
 
-    const user = await User.findById(userId).lean();
+    const userObjectId = toObjectId(userId);
+    const user = await User.findById(userObjectId).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
     const ingredients = text

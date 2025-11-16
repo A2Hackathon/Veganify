@@ -1,6 +1,7 @@
 import express from "express";
 import { getUserContext } from "../utils/userContext.js";
 import { answerWithContext } from "../utils/llmClient.js";
+import { toObjectId } from "../utils/objectIdHelper.js";
 
 const router = express.Router();
 
@@ -14,7 +15,8 @@ router.post("/ask", async (req, res) => {
   }
 
   try {
-    const context = await getUserContext(actualUserId);
+    const userObjectId = toObjectId(actualUserId);
+    const context = await getUserContext(userObjectId.toString());
     const answer = await answerWithContext(context, question);
     res.json({ answer });
   } catch (err) {

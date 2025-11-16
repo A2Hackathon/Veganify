@@ -31,9 +31,23 @@ try {
 }
 
 const app = express();
-app.use(cors());
+
+// CORS configuration - allow all origins for development
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Add request logging
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.path}`);
+  next();
+});
 
 // Health check
 app.get("/", (req, res) => res.json({ ok: true, msg: "Veganify backend (Albert focus) running" }));
@@ -61,10 +75,30 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 
-// Start server
+// Start server with keep-alive settings
 const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ Server listening on http://localhost:${PORT}`);
   console.log(`✅ Server also accessible on http://127.0.0.1:${PORT}`);
+});
+
+// Configure server to keep connections alive
+server.keepAliveTimeout = 65000; // 65 seconds
+server.headersTimeout = 66000; // 66 seconds (must be > keepAliveTimeout)
+
+// Handle connection events
+server.on('connection', (socket) => {
+  socket.setKeepAlive(true, 60000); // Enable keep-alive, probe every 60 seconds
+});
+
+// Handle uncaught exceptions to prevent server crashes
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception:', err);
+  // Don't exit - log and continue
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit - log and continue
 });
 
 // Handle server errors

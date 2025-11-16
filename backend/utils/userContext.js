@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import Recipe from "../models/Recipe.js";
 import UserImpact from "../models/UserImpact.js";
+import { toObjectId } from "./objectIdHelper.js";
 
 export async function getUserContext(userId) {
   if (!userId) {
@@ -16,9 +17,10 @@ export async function getUserContext(userId) {
     };
   }
 
-  const user = await User.findById(userId).lean();
-  const impact = await UserImpact.findOne({ user_id: userId }).lean();
-  const recipes = await Recipe.find({ userId }).lean();
+  const userObjectId = toObjectId(userId);
+  const user = await User.findById(userObjectId).lean();
+  const impact = await UserImpact.findOne({ user_id: userObjectId }).lean();
+  const recipes = await Recipe.find({ userId: userObjectId }).lean();
 
   return {
     user: {
