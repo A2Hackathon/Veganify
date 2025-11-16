@@ -121,7 +121,42 @@ garlic
     }
 }
 
+
+/**
+ * Check if ingredients are allowed for a user
+ * @param {Object} userPrefs { dietLevel: string, extraForbiddenTags: [string] }
+ * @param {string[]} ingredientTags
+ * @returns {Object} { allowed: boolean, reasons: [string] }
+ */
+async function isAllowedForUser(userPrefs, ingredientTags) {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `
+        You are a dietary compliance assistant.
+        User dietary preferences:
+        Diet Level: ${userPrefs.dietLevel}
+        Extra Forbidden Tags: ${userPrefs.extraForbiddenTags?.join(', ') || 'none'}
+
+        For each ingredient tag: ${ingredientTags.join(', ')}
+        Decide if it is allowed (true/false) and explain why if not allowed.
+        Return JSON array:
+        [
+        { "ingredient": "name", "allowed": Allowed/NotAllowed/Ambiguous, "reason": "..." }
+        ]
+`;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const raw = result.response.text();
+        return JSON.parse(raw);
+    } catch (err) {
+        console.error("❌ Failed to check diet:", err, "\nRaw:", err?.response || "");
+        return ingredientTags.map(tag => ({ ingredient: tag, allowed: true, reason: "" }));
+    }
+}
+
 module.exports = {
     rewriteRecipeSteps,
-    extractIngredients
+    extractIngredients,
+    isAllowedForUser
 };

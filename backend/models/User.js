@@ -2,7 +2,9 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
     userID: {
-        type: Number
+        type: Number,
+        unique: true,
+        index: true
     }, 
     name: {
         type: String,
@@ -16,6 +18,10 @@ const userSchema = new mongoose.Schema({
         type: [String],
         default: []
     }, 
+    preferredCuisines: {
+        type: [String], 
+        default: []
+    },
     createdAt: {
         type: Date,
         default: Date.now
