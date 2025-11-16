@@ -3,12 +3,51 @@ import SwiftUI
 // MARK: - Design System
 
 extension Color {
-    static let sproutGreen = Color(red: 0.2, green: 0.7, blue: 0.4)
-    static let sproutGreenLight = Color(red: 0.3, green: 0.8, blue: 0.5)
-    static let sproutGreenDark = Color(red: 0.15, green: 0.6, blue: 0.35)
-    static let sproutYellow = Color(red: 1.0, green: 0.8, blue: 0.2)
-    static let sproutOrange = Color(red: 1.0, green: 0.6, blue: 0.2)
-    static let sproutBackground = Color(red: 0.98, green: 0.99, blue: 0.97)
+    // Primary green colors from spec: #658354 and #4b6043
+    static let sproutGreen = Color(hex: "658354")      // Primary green
+    static let sproutGreenDark = Color(hex: "4b6043")  // Darker green
+    static let sproutGreenLight = Color(hex: "7a9a6a") // Lighter variant
+    static let sproutGreenLighter = Color(hex: "8fb37f") // Even lighter
+    static let sproutGreenMuted = Color(hex: "9db08d")   // Muted variant
+    
+    // Accent colors
+    static let sproutYellow = Color(red: 1.0, green: 0.85, blue: 0.3)
+    static let sproutOrange = Color(red: 1.0, green: 0.65, blue: 0.25)
+    
+    // Background colors
+    static let sproutBackground = Color(hex: "f5f7f3")
+    static let sproutCardBackground = Color(hex: "ffffff")
+    
+    // Status colors
+    static let sproutSuccess = Color(hex: "658354")
+    static let sproutWarning = Color(hex: "d4a574")
+    static let sproutError = Color(hex: "d87a7a")
+}
+
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
+        }
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
 }
 
 extension View {

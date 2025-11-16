@@ -7,6 +7,15 @@ struct ScanView: View {
     @State private var selectedImage: UIImage?
     @State private var showingImagePicker = false
     @State private var sourceType: UIImagePickerController.SourceType = .camera
+    @State private var scanMode: ScanMode = .ingredients
+    @State private var showingAlternatives = false
+    @State private var selectedIngredient: IngredientClassification?
+    @State private var alternatives: [String] = []
+    
+    enum ScanMode {
+        case ingredients
+        case menu
+    }
     
     var body: some View {
         NavigationStack {
@@ -19,6 +28,17 @@ struct ScanView: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
+                    // Mode selector
+                    if selectedImage == nil {
+                        Picker("Scan Mode", selection: $scanMode) {
+                            Text("Ingredients").tag(ScanMode.ingredients)
+                            Text("Menu").tag(ScanMode.menu)
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                    }
+                    
                     if let image = selectedImage {
                         ScrollView {
                             VStack(spacing: 20) {
@@ -32,80 +52,67 @@ struct ScanView: View {
                                     .padding(.horizontal, 20)
                                     .padding(.top, 20)
                                 
-                                // Results card
-                                VStack(alignment: .leading, spacing: 20) {
-                                    HStack {
-                                        Image(systemName: "checkmark.seal.fill")
-                                            .font(.title3)
-                                            .foregroundColor(.sproutGreen)
-                                        Text("Scan Results")
-                                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                                        Spacer()
-                                    }
-                                    
-                                    VStack(spacing: 16) {
-                                        IngredientResultRow(
-                                            color: .red,
-                                            icon: "xmark.circle.fill",
-                                            name: "Gelatin",
-                                            detail: "Not allowed for your eating style."
-                                        )
+                                if vm.isLoading {
+                                    ProgressView()
+                                        .scaleEffect(1.5)
+                                        .padding()
+                                } else if scanMode == .ingredients && !vm.scannedIngredients.isEmpty {
+                                    // Ingredients results
+                                    VStack(alignment: .leading, spacing: 20) {
+                                        HStack {
+                                            Image(systemName: "checkmark.seal.fill")
+                                                .font(.title3)
+                                                .foregroundColor(.sproutGreen)
+                                            Text("Scan Results")
+                                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                            Spacer()
+                                        }
                                         
-                                        IngredientResultRow(
-                                            color: .sproutYellow,
-                                            icon: "exclamationmark.triangle.fill",
-                                            name: "Natural Flavors",
-                                            detail: "May contain animal-derived components."
-                                        )
-                                        
-                                        IngredientResultRow(
-                                            color: .sproutGreen,
-                                            icon: "checkmark.circle.fill",
-                                            name: "Potato Starch",
-                                            detail: "Safe for you."
-                                        )
-                                    }
-                                    
-                                    Divider()
-                                    
-                                    // Alternative suggestion
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        Text("Gelatin is not allowed.")
-                                            .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                            .foregroundColor(.primary)
-                                        
-                                        Button {
-                                            // open prompt
-                                        } label: {
-                                            HStack {
-                                                Image(systemName: "lightbulb.fill")
-                                                    .font(.subheadline)
-                                                Text("Suggest an alternative product")
-                                                    .font(.subheadline)
-                                                    .fontWeight(.semibold)
-                                                Spacer()
-                                                Image(systemName: "arrow.right")
-                                                    .font(.caption)
-                                            }
-                                            .foregroundColor(.white)
-                                            .padding(.vertical, 14)
-                                            .padding(.horizontal, 16)
-                                            .frame(maxWidth: .infinity)
-                                            .background(
-                                                LinearGradient(
-                                                    colors: [Color.sproutGreen, Color.sproutGreenDark],
-                                                    startPoint: .leading,
-                                                    endPoint: .trailing
+                                        VStack(spacing: 16) {
+                                            ForEach(vm.scannedIngredients) { ingredient in
+                                                IngredientResultRow(
+                                                    ingredient: ingredient,
+                                                    onRequestAlternative: {
+                                                        selectedIngredient = ingredient
+                                                        Task {
+                                                            alternatives = await vm.getAlternativeProduct(
+                                                                productType: ingredient.name,
+                                                                context: ingredient.reason
+                                                            )
+                                                            showingAlternatives = true
+                                                        }
+                                                    }
                                                 )
-                                            )
-                                            .cornerRadius(12)
+                                            }
                                         }
                                     }
+                                    .padding(24)
+                                    .cardStyle()
+                                    .padding(.horizontal, 20)
+                                    .padding(.bottom, 24)
+                                } else if scanMode == .menu && !vm.scannedMenu.isEmpty {
+                                    // Menu results
+                                    VStack(alignment: .leading, spacing: 20) {
+                                        HStack {
+                                            Image(systemName: "fork.knife")
+                                                .font(.title3)
+                                                .foregroundColor(.sproutGreen)
+                                            Text("Menu Results")
+                                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                            Spacer()
+                                        }
+                                        
+                                        VStack(spacing: 16) {
+                                            ForEach(vm.scannedMenu) { dish in
+                                                MenuDishRow(dish: dish)
+                                            }
+                                        }
+                                    }
+                                    .padding(24)
+                                    .cardStyle()
+                                    .padding(.horizontal, 20)
+                                    .padding(.bottom, 24)
                                 }
-                                .padding(24)
-                                .cardStyle()
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 24)
                             }
                         }
                     } else {
@@ -184,6 +191,26 @@ struct ScanView: View {
             .sheet(isPresented: $showingImagePicker) {
                 ImagePicker(image: $selectedImage, sourceType: sourceType)
             }
+            .onChange(of: selectedImage) { newImage in
+                if let image = newImage,
+                   let imageData = image.jpegData(compressionQuality: 0.8) {
+                    Task {
+                        if scanMode == .ingredients {
+                            await vm.scanIngredients(imageData: imageData)
+                        } else {
+                            await vm.scanMenu(imageData: imageData)
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showingAlternatives) {
+                if let ingredient = selectedIngredient {
+                    AlternativesView(
+                        ingredient: ingredient,
+                        alternatives: alternatives
+                    )
+                }
+            }
         }
     }
 }
@@ -230,34 +257,176 @@ struct ScanButton: View {
 }
 
 struct IngredientResultRow: View {
-    let color: Color
-    let icon: String
-    let name: String
-    let detail: String
+    let ingredient: IngredientClassification
+    let onRequestAlternative: () -> Void
+    
+    private var statusColor: Color {
+        switch ingredient.status {
+        case .allowed: return .sproutGreen
+        case .ambiguous: return .sproutWarning
+        case .notAllowed: return .sproutError
+        }
+    }
+    
+    private var statusIcon: String {
+        switch ingredient.status {
+        case .allowed: return "checkmark.circle.fill"
+        case .ambiguous: return "exclamationmark.triangle.fill"
+        case .notAllowed: return "xmark.circle.fill"
+        }
+    }
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.15))
-                    .frame(width: 36, height: 36)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(statusColor.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    
+                    Image(systemName: statusIcon)
+                        .font(.system(size: 18))
+                        .foregroundColor(statusColor)
+                }
                 
-                Image(systemName: icon)
-                    .font(.system(size: 18))
-                    .foregroundColor(color)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(ingredient.name)
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primary)
+                    Text(ingredient.reason)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             
-            VStack(alignment: .leading, spacing: 6) {
-                Text(name)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primary)
-                Text(detail)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            if ingredient.status == .notAllowed {
+                Button {
+                    onRequestAlternative()
+                } label: {
+                    HStack {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.caption)
+                        Text("Suggest an alternative product")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 14)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.sproutGreen, Color.sproutGreenDark],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(10)
+                }
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+struct MenuDishRow: View {
+    let dish: MenuDish
+    
+    private var statusColor: Color {
+        switch dish.status {
+        case .suitable: return .sproutGreen
+        case .modifiable: return .sproutWarning
+        case .notSuitable: return .sproutError
+        }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(dish.name)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                Text(dish.status.rawValue.capitalized)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(statusColor.opacity(0.2))
+                    .foregroundColor(statusColor)
+                    .cornerRadius(8)
+            }
+            
+            if let suggestion = dish.modificationSuggestion {
+                Text(suggestion)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            
+            if dish.status == .modifiable {
+                Button {
+                    // Navigate to Cook tab with dish name
+                } label: {
+                    HStack {
+                        Text("Veganize this dish")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.white)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 14)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.sproutGreen, Color.sproutGreenDark],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(10)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+struct AlternativesView: View {
+    let ingredient: IngredientClassification
+    let alternatives: [String]
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text("Alternatives for \(ingredient.name):")
+                        .font(.headline)
+                        .foregroundColor(.sproutGreenDark)
+                    
+                    ForEach(alternatives, id: \.self) { alternative in
+                        Text(alternative)
+                            .font(.subheadline)
+                    }
+                }
+            }
+            .navigationTitle("Alternatives")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
     }
 }
 
