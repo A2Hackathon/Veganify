@@ -68,4 +68,17 @@ Each developer needs to:
 2. Find their Windows laptop's IP address using `ipconfig`
 3. Update `ios/APIClient.swift` with their Windows laptop's IP address
 4. Make sure both the Windows laptop and MacBook are on the same network (Wi-Fi)
+5. **Configure Windows Firewall** to allow port 4000 (see `FIREWALL_SETUP.md` for detailed instructions)
+
+## Firewall Configuration
+
+If your MacBook cannot connect to the Windows server, you may need to configure Windows Firewall to allow connections on port 4000.
+
+**Quick Steps:**
+1. Open Windows Defender Firewall with Advanced Security (`wf.msc`)
+2. Create a new **Inbound Rule** for **TCP port 4000**
+3. Allow the connection for **Private** networks
+4. Repeat for **Outbound Rules**
+
+See `FIREWALL_SETUP.md` for detailed step-by-step instructions.
 

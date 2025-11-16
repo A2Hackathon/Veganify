@@ -12,16 +12,23 @@ class APIClient {
     init() {
         // Backend URL - matches server port 4000
         // For iOS Simulator: use localhost
-        // For physical device: use your computer's IP address (e.g., http://192.168.1.100:4000)
-        // To find your IP: On Mac: System Preferences > Network, or run: ipconfig getifaddr en0
-        // On Windows: ipconfig (look for IPv4 Address)
+        // IMPORTANT: Cross-Platform Setup
+        // If your iOS app runs on MacBook and server runs on Windows laptop:
+        // 1. Find Windows laptop's IP: Run "ipconfig" on Windows, look for "IPv4 Address"
+        // 2. Replace localhost below with Windows IP (e.g., "http://10.5.174.193:4000")
+        // 3. Make sure both devices are on the same Wi-Fi network
+        //
+        // For iOS Simulator on same Mac as server: use "http://localhost:4000"
+        // For physical device connecting to Windows server: use Windows IP address
         #if DEBUG
         #if targetEnvironment(simulator)
-        self.baseURL = "http://localhost:4000"
+        // Simulator on MacBook: use Windows laptop IP if server is on Windows
+        // If server is on same Mac: use "http://localhost:4000"
+        self.baseURL = "http://10.5.174.193:4000" // ⚠️ Windows laptop IP (change if different)
         #else
-        // For physical device, replace with your computer's IP address
-        // Example: "http://192.168.1.100:4000"
-        self.baseURL = "http://localhost:4000" // ⚠️ Change this to your computer's IP for physical device
+        // Physical device MUST use Windows laptop's IP address
+        // Example: "http://10.5.174.193:4000" (replace with your Windows laptop's IP)
+        self.baseURL = "http://10.5.174.193:4000" // ⚠️ Update this to your Windows laptop's IP address
         #endif
         #else
         self.baseURL = "https://your-production-url.com"
