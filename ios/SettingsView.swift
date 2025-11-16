@@ -87,8 +87,13 @@ struct SettingsView: View {
                     }
                     
                     Section {
-                        Toggle(isOn: .constant(false)) {
-                            Label("Dark Mode (system)", systemImage: "moon.fill")
+                        Toggle(isOn: Binding(
+                            get: { UserDefaults.standard.bool(forKey: "darkModeEnabled") },
+                            set: { newValue in
+                                UserDefaults.standard.set(newValue, forKey: "darkModeEnabled")
+                            }
+                        )) {
+                            Label("Dark Mode", systemImage: "moon.fill")
                         }
                         .tint(.sproutGreen)
                         

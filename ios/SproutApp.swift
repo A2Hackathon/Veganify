@@ -4,6 +4,7 @@ import SwiftUI
 struct SproutApp: App {
     @StateObject private var viewModel = SproutViewModel()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
     
     var body: some Scene {
         WindowGroup {
@@ -20,6 +21,7 @@ struct SproutApp: App {
             } else {
                 RootView()
                     .environmentObject(viewModel)
+                    .preferredColorScheme(darkModeEnabled ? .dark : .light)
                     .task {
                         await viewModel.loadProfile()
                     }

@@ -7,6 +7,7 @@ struct RootView: View {
     @State private var selectedTab: SproutTab = .home
     @State private var showOnboarding = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
     
     var body: some View {
         Group {
@@ -56,6 +57,7 @@ struct RootView: View {
                         .tag(SproutTab.settings)
                 }
                 .accentColor(.sproutGreen)
+                .preferredColorScheme(darkModeEnabled ? .dark : .light)
                 .onAppear {
                     Task {
                         await vm.loadProfile()

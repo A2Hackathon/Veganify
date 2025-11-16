@@ -37,8 +37,14 @@ class SproutViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         
+        // Try to get userId from UserDefaults first (saved during onboarding)
+        guard let userId = UserDefaults.standard.string(forKey: "currentUserId") ?? userProfile?.id else {
+            errorMessage = "No user ID found. Please complete onboarding."
+            return
+        }
+        
         do {
-            userProfile = try await apiClient.getProfile()
+            userProfile = try await apiClient.getProfile(userId: userId)
             await loadHomeData()
         } catch {
             errorMessage = "Failed to load profile: \(error.localizedDescription)"
@@ -59,8 +65,9 @@ class SproutViewModel: ObservableObject {
     // MARK: - Home Data
     
     func loadHomeData() async {
+        guard let userId = userProfile?.id else { return }
         do {
-            let summary = try await apiClient.getHomeSummary()
+            let summary = try await apiClient.getHomeSummary(userId: userId)
             await MainActor.run {
                 if let profile = userProfile {
                     userProfile = UserProfile(

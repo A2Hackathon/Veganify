@@ -92,8 +92,8 @@ class APIClient {
     
     // MARK: - Profile
     
-    func getProfile() async throws -> UserProfile {
-        return try await request(endpoint: "/profile")
+    func getProfile(userId: String) async throws -> UserProfile {
+        return try await request(endpoint: "/profile?userId=\(userId)")
     }
     
     func updateProfile(_ profile: UserProfile) async throws -> UserProfile {
@@ -111,8 +111,8 @@ class APIClient {
         let missions: [Mission]
     }
     
-    func getHomeSummary() async throws -> HomeSummary {
-        return try await request(endpoint: "/home/summary")
+    func getHomeSummary(userId: String) async throws -> HomeSummary {
+        return try await request(endpoint: "/home/summary?userId=\(userId)")
     }
     
     func completeMission(userId: String, missionId: String) async throws -> UserProfile {
