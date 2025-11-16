@@ -62,9 +62,11 @@ class SproutViewModel: ObservableObject {
                 // Check if it's a connection error
                 if let urlError = error as? URLError {
                     print("   URLError code: \(urlError.code.rawValue)")
-                    if urlError.code == .cannotConnectToHost || urlError.code == .notConnectedToInternet || urlError.code.rawValue == -1084 {
-                        print("⚠️ Cannot connect to server. Creating local fallback profile...")
-                        await createLocalFallbackProfile()
+                    if urlError.code == .cannotConnectToHost || urlError.code == .notConnectedToInternet {
+                        print("⚠️ Cannot connect to server. Will attempt to create profile when server is available.")
+                        await MainActor.run {
+                            errorMessage = "Cannot connect to server. Make sure backend is running on port 4000."
+                        }
                         return
                     }
                 }
