@@ -73,11 +73,21 @@ router.patch("/", async (req, res) => {
     const profile = req.body;
     const userId = profile.id;
 
+    console.log("📝 PATCH /profile - Received update request:", {
+      userId,
+      eatingStyle: profile.eatingStyle,
+      dietaryRestrictions: profile.dietaryRestrictions?.length || 0,
+      cuisinePreferences: profile.cuisinePreferences?.length || 0,
+      cookingStylePreferences: profile.cookingStylePreferences?.length || 0,
+      sproutName: profile.sproutName
+    });
+
     if (!userId) return res.status(400).json({ error: "id required" });
 
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: "User not found" });
 
+    // Update fields
     user.name = profile.userName || user.name;
     user.extraForbiddenTags = profile.dietaryRestrictions || [];
     user.preferredCuisines = profile.cuisinePreferences || [];
@@ -97,6 +107,14 @@ router.patch("/", async (req, res) => {
     }
     
     await user.save();
+    console.log("✅ Profile saved to MongoDB:", {
+      userId: user._id.toString(),
+      dietLevel: user.dietLevel,
+      extraForbiddenTags: user.extraForbiddenTags.length,
+      preferredCuisines: user.preferredCuisines.length,
+      cookingStylePreferences: user.cookingStylePreferences.length,
+      sproutName: user.sproutName
+    });
 
     const impact = await UserImpact.findOne({ user_id: userId }).lean();
     const xp = impact?.xp || 0;

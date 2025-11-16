@@ -143,15 +143,29 @@ struct DietaryRestrictionsEditorView: View {
     
     private func saveRestrictions() {
         Task {
-            if var profile = vm.userProfile {
-                profile.dietaryRestrictions = selectedRestrictions
-                await vm.updateProfile(profile)
-                // Wait a bit to ensure profile is updated
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            guard var profile = vm.userProfile, let userId = profile.id else {
+                print("❌ Cannot save: No user profile or userId")
                 await MainActor.run {
                     dismiss()
                 }
-            } else {
+                return
+            }
+            
+            profile.dietaryRestrictions = selectedRestrictions
+            await vm.updateProfile(profile)
+            
+            // Reload profile from server to verify it was saved
+            do {
+                print("🔄 Reloading profile from server to verify save...")
+                let reloadedProfile = try await APIClient.shared.getProfile(userId: userId)
+                await MainActor.run {
+                    vm.userProfile = reloadedProfile
+                    print("✅ Profile reloaded - restrictions: \(reloadedProfile.dietaryRestrictions)")
+                    dismiss()
+                }
+            } catch {
+                print("⚠️ Failed to reload profile, but update may have succeeded: \(error)")
+                // Still dismiss even if reload fails
                 await MainActor.run {
                     dismiss()
                 }
@@ -229,15 +243,28 @@ struct CuisinePreferencesEditorView: View {
     
     private func saveCuisines() {
         Task {
-            if var profile = vm.userProfile {
-                profile.cuisinePreferences = selectedCuisines
-                await vm.updateProfile(profile)
-                // Wait a bit to ensure profile is updated
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            guard var profile = vm.userProfile, let userId = profile.id else {
+                print("❌ Cannot save: No user profile or userId")
                 await MainActor.run {
                     dismiss()
                 }
-            } else {
+                return
+            }
+            
+            profile.cuisinePreferences = selectedCuisines
+            await vm.updateProfile(profile)
+            
+            // Reload profile from server to verify it was saved
+            do {
+                print("🔄 Reloading profile from server to verify save...")
+                let reloadedProfile = try await APIClient.shared.getProfile(userId: userId)
+                await MainActor.run {
+                    vm.userProfile = reloadedProfile
+                    print("✅ Profile reloaded - cuisines: \(reloadedProfile.cuisinePreferences)")
+                    dismiss()
+                }
+            } catch {
+                print("⚠️ Failed to reload profile, but update may have succeeded: \(error)")
                 await MainActor.run {
                     dismiss()
                 }
@@ -315,15 +342,28 @@ struct CookingStyleEditorView: View {
     
     private func saveStyles() {
         Task {
-            if var profile = vm.userProfile {
-                profile.cookingStylePreferences = selectedStyles
-                await vm.updateProfile(profile)
-                // Wait a bit to ensure profile is updated
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            guard var profile = vm.userProfile, let userId = profile.id else {
+                print("❌ Cannot save: No user profile or userId")
                 await MainActor.run {
                     dismiss()
                 }
-            } else {
+                return
+            }
+            
+            profile.cookingStylePreferences = selectedStyles
+            await vm.updateProfile(profile)
+            
+            // Reload profile from server to verify it was saved
+            do {
+                print("🔄 Reloading profile from server to verify save...")
+                let reloadedProfile = try await APIClient.shared.getProfile(userId: userId)
+                await MainActor.run {
+                    vm.userProfile = reloadedProfile
+                    print("✅ Profile reloaded - cooking styles: \(reloadedProfile.cookingStylePreferences)")
+                    dismiss()
+                }
+            } catch {
+                print("⚠️ Failed to reload profile, but update may have succeeded: \(error)")
                 await MainActor.run {
                     dismiss()
                 }
@@ -403,15 +443,28 @@ struct EatingStyleEditorView: View {
     private func saveStyle() {
         guard let style = selectedStyle else { return }
         Task {
-            if var profile = vm.userProfile {
-                profile.eatingStyle = style.rawValue
-                await vm.updateProfile(profile)
-                // Wait a bit to ensure profile is updated
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            guard var profile = vm.userProfile, let userId = profile.id else {
+                print("❌ Cannot save: No user profile or userId")
                 await MainActor.run {
                     dismiss()
                 }
-            } else {
+                return
+            }
+            
+            profile.eatingStyle = style.rawValue
+            await vm.updateProfile(profile)
+            
+            // Reload profile from server to verify it was saved
+            do {
+                print("🔄 Reloading profile from server to verify save...")
+                let reloadedProfile = try await APIClient.shared.getProfile(userId: userId)
+                await MainActor.run {
+                    vm.userProfile = reloadedProfile
+                    print("✅ Profile reloaded - eating style: \(reloadedProfile.eatingStyle)")
+                    dismiss()
+                }
+            } catch {
+                print("⚠️ Failed to reload profile, but update may have succeeded: \(error)")
                 await MainActor.run {
                     dismiss()
                 }

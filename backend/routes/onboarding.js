@@ -28,6 +28,14 @@ router.post("/profile", async (req, res) => {
       sproutName,
     } = req.body;
 
+    console.log("🌱 POST /onboarding/profile - Creating new user:", {
+      eatingStyle,
+      dietaryRestrictions: dietaryRestrictions?.length || 0,
+      cuisinePreferences: cuisinePreferences?.length || 0,
+      cookingStylePreferences: cookingStylePreferences?.length || 0,
+      sproutName
+    });
+
     const dietLevel = eatingStyleToDietLevel(eatingStyle);
 
     const user = await User.create({
@@ -39,6 +47,8 @@ router.post("/profile", async (req, res) => {
       sproutName: sproutName || "Bud",
     });
 
+    console.log("✅ User created in MongoDB with ID:", user._id.toString());
+
     await UserImpact.create({
       user_id: user._id,
       xp: 0,
@@ -47,6 +57,8 @@ router.post("/profile", async (req, res) => {
       total_meals_logged: 0,
       forest_stage: "SEED",
     });
+
+    console.log("✅ UserImpact created for user:", user._id.toString());
 
     const profile = {
       id: user._id.toString(),

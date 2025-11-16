@@ -736,21 +736,20 @@ struct ReviewStep: View {
         }
         
         Task {
-            do {
-                await viewModel.completeOnboarding()
-                // Only mark as completed if profile was successfully created
-                if viewModel.isCompleted {
-                    await MainActor.run {
-                        // This will trigger @AppStorage to update in SproutApp and RootView
-                        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+            await viewModel.completeOnboarding()
+            // Only mark as completed if profile was successfully created
+            if viewModel.isCompleted {
+                await MainActor.run {
+                    // Update @AppStorage by setting UserDefaults
+                    UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+                    // Force a small delay to ensure @AppStorage updates
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        // Trigger view refresh
+                        NotificationCenter.default.post(name: NSNotification.Name("OnboardingCompleted"), object: nil)
                     }
                 }
-            } catch {
-                print("Error completing onboarding: \(error)")
-                // Still mark as completed even if there's an error (offline mode)
-                await MainActor.run {
-                    UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
-                }
+            } else {
+                print("❌ Onboarding failed - profile was not created")
             }
         }
     }
@@ -906,7 +905,13 @@ class OnboardingViewModel: ObservableObject {
     @Published var isCompleted = false
     
     func completeOnboarding() async {
-        guard let eatingStyle = data.eatingStyle else { return }
+        guard let eatingStyle = data.eatingStyle else {
+            print("❌ Cannot complete onboarding: eating style not selected")
+            await MainActor.run {
+                isCompleted = false
+            }
+            return
+        }
         
         let profile = UserProfile(
             id: UUID().uuidString,
@@ -924,17 +929,22 @@ class OnboardingViewModel: ObservableObject {
         )
         
         do {
+            print("🌱 Creating profile via API...")
             let createdProfile = try await APIClient.shared.createProfile(profile)
+            print("✅ Profile created successfully with ID: \(createdProfile.id)")
+            
             await MainActor.run {
                 // Save userId to UserDefaults for future use
                 UserDefaults.standard.set(createdProfile.id, forKey: "currentUserId")
+                print("💾 Saved userId to UserDefaults: \(createdProfile.id)")
                 isCompleted = true
             }
         } catch let error {
             print("❌ Error completing onboarding: \(error)")
-            // Handle error - for now, still mark as completed
+            print("   Error details: \(error.localizedDescription)")
+            // Don't mark as completed if API call failed
             await MainActor.run {
-                isCompleted = true
+                isCompleted = false
             }
         }
     }

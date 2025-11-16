@@ -71,5 +71,9 @@ struct RootView: View {
             await vm.loadGroceryList()
             await vm.loadSavedRecipes()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("OnboardingCompleted"))) { _ in
+            // Force refresh when onboarding completes
+            hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        }
     }
 }
