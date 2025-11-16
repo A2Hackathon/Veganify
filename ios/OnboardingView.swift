@@ -742,7 +742,7 @@ struct ReviewStep: View {
             // Only mark as completed if profile was successfully created
             if viewModel.isCompleted {
                 // Load the profile into the shared viewModel so settings can access it
-                if let userId = UserDefaults.standard.string(forKey: "currentUserId") {
+                if UserDefaults.standard.string(forKey: "currentUserId") != nil {
                     print("🔄 Loading profile into SproutViewModel after onboarding...")
                     await sproutViewModel.loadProfile()
                     print("✅ Profile loaded into SproutViewModel: \(sproutViewModel.userProfile != nil ? "Success" : "Failed")")

@@ -6,14 +6,15 @@ const router = express.Router();
 
 // POST /ai/ask
 router.post("/ask", async (req, res) => {
-  const { user_id, question } = req.body;
+  const { userId, user_id, question } = req.body;
+  const actualUserId = userId || user_id; // Support both for backward compatibility
 
-  if (!user_id || !question) {
-    return res.status(400).json({ error: "user_id and question required" });
+  if (!actualUserId || !question) {
+    return res.status(400).json({ error: "userId/user_id and question required" });
   }
 
   try {
-    const context = await getUserContext(user_id);
+    const context = await getUserContext(actualUserId);
     const answer = await answerWithContext(context, question);
     res.json({ answer });
   } catch (err) {

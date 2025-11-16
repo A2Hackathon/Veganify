@@ -445,14 +445,14 @@ class APIClient {
     
     func sendChatMessage(userId: String, question: String) async throws -> ChatResponse {
         struct Request: Encodable {
-            let user_id: String
+            let userId: String
             let question: String
         }
         
         return try await request(
             endpoint: "/ai/ask",
             method: "POST",
-            body: Request(user_id: userId, question: question)
+            body: Request(userId: userId, question: question)
         )
     }
     
