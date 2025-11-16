@@ -62,7 +62,7 @@
 		A1000032 = {
 			isa = PBXGroup;
 			children = (
-				A1000033 /* Sprout */,
+				A1000050 /* Sprout */,
 				A1000034 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -75,7 +75,7 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A1000033 /* Sprout */ = {
+		A1000050 /* Sprout */ = {
 			isa = PBXGroup;
 			children = (
 				A1000002 /* SproutApp.swift */,
