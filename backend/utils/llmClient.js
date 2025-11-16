@@ -50,7 +50,7 @@ ${recipeText}
 //
 // 2. Rewrite recipe steps with substitutions
 //
-export async function rewriteRecipeSteps(subs, originalRecipe) {
+async function rewriteRecipeSteps(subs, originalRecipe) {
     let instructions = subs
         .filter(s => s.substitute)
         .map(s => `- Replace "${s.original}" with "${s.substitute}".`)
