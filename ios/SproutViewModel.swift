@@ -2,6 +2,9 @@ import SwiftUI
 
 @MainActor
 class SproutViewModel: ObservableObject {
+    // Shared user ID - everyone uses Albert's profile
+    static let SHARED_ALBERT_USER_ID = "ALBERT_SHARED_USER"
+    
     @Published var userProfile: UserProfile?
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -43,49 +46,47 @@ class SproutViewModel: ObservableObject {
             }
         }
         
-        // Try to get userId from UserDefaults first (saved during onboarding)
-        if let userId = UserDefaults.standard.string(forKey: "currentUserId") ?? userProfile?.id {
-            // Profile exists, load it
-            do {
-                print("🔄 Loading profile for userId: \(userId)")
-                let loadedProfile = try await apiClient.getProfile(userId: userId)
-                await MainActor.run {
-                    userProfile = loadedProfile
-                    print("✅ Profile loaded successfully: \(loadedProfile.id)")
-                }
-                await loadHomeData()
-            } catch {
-                print("❌ Failed to load profile: \(error)")
-                print("   Error type: \(type(of: error))")
-                print("   Error description: \(error.localizedDescription)")
-                
-                // Check if it's a connection error
-                if let urlError = error as? URLError {
-                    print("   URLError code: \(urlError.code.rawValue)")
-                    if urlError.code == .cannotConnectToHost || urlError.code == .notConnectedToInternet {
-                        print("⚠️ Cannot connect to server. Will attempt to create profile when server is available.")
-                        await MainActor.run {
-                            errorMessage = "Cannot connect to server. Make sure backend is running on port 4000."
-                        }
-                        return
+        // Always use the shared Albert user ID
+        let userId = Self.SHARED_ALBERT_USER_ID
+        
+        // Try to load the shared profile
+        do {
+            print("🔄 Loading shared Albert profile for userId: \(userId)")
+            let loadedProfile = try await apiClient.getProfile(userId: userId)
+            await MainActor.run {
+                userProfile = loadedProfile
+                print("✅ Shared Albert profile loaded successfully: \(loadedProfile.id)")
+            }
+            // Save the shared ID to UserDefaults for consistency
+            UserDefaults.standard.set(userId, forKey: "currentUserId")
+            await loadHomeData()
+        } catch {
+            print("❌ Failed to load shared Albert profile: \(error)")
+            print("   Error type: \(type(of: error))")
+            print("   Error description: \(error.localizedDescription)")
+            
+            // Check if it's a connection error
+            if let urlError = error as? URLError {
+                print("   URLError code: \(urlError.code.rawValue)")
+                if urlError.code == .cannotConnectToHost || urlError.code == .notConnectedToInternet {
+                    print("⚠️ Cannot connect to server. Will attempt to create profile when server is available.")
+                    await MainActor.run {
+                        errorMessage = "Cannot connect to server. Make sure backend is running on port 4000."
                     }
-                }
-                
-                // If loading fails, try creating a new profile
-                let errorString = error.localizedDescription.lowercased()
-                if errorString.contains("404") || errorString.contains("not found") {
-                    print("🔄 Profile not found in database, creating default profile...")
-                    await createDefaultProfile()
-                } else {
-                    // For other errors, try creating a default profile
-                    print("🔄 Other error, attempting to create default profile...")
-                    await createDefaultProfile()
+                    return
                 }
             }
-        } else {
-            // No profile exists, create a default one
-            print("🌱 No userId found in UserDefaults. Creating default profile...")
-            await createDefaultProfile()
+            
+            // If profile doesn't exist (404), create it
+            let errorString = error.localizedDescription.lowercased()
+            if errorString.contains("404") || errorString.contains("not found") {
+                print("🔄 Shared Albert profile not found in database, creating...")
+                await createDefaultProfile()
+            } else {
+                // For other errors, try creating a default profile
+                print("🔄 Other error, attempting to create shared Albert profile...")
+                await createDefaultProfile()
+            }
         }
         
         // Verify profile was set
@@ -99,15 +100,15 @@ class SproutViewModel: ObservableObject {
     }
     
     private func createDefaultProfile() async {
-        // Create default vegan profile
+        // Create shared Albert profile (vegan, no restrictions/preferences)
         let defaultProfile = UserProfile(
-            id: "", // Backend will assign the real ID
+            id: Self.SHARED_ALBERT_USER_ID, // Use shared ID
             userName: "User",
             eatingStyle: EatingStyle.vegan.rawValue,
-            dietaryRestrictions: [],
-            cuisinePreferences: [],
-            cookingStylePreferences: [],
-            sproutName: "Bud",
+            dietaryRestrictions: [], // No dietary restrictions
+            cuisinePreferences: [], // No cuisine preferences
+            cookingStylePreferences: [], // No cooking style preferences
+            sproutName: "Albert",
             level: 1,
             xp: 0,
             xpToNextLevel: 100,
@@ -116,13 +117,13 @@ class SproutViewModel: ObservableObject {
         )
         
         do {
-            print("🌱 Creating default profile in MongoDB...")
+            print("🌱 Creating shared Albert profile in MongoDB...")
             let createdProfile = try await apiClient.createProfile(defaultProfile)
-            print("✅ Default profile created with ID: \(createdProfile.id)")
+            print("✅ Shared Albert profile created with ID: \(createdProfile.id)")
             
-            // Save userId to UserDefaults
-            UserDefaults.standard.set(createdProfile.id, forKey: "currentUserId")
-            print("💾 Saved userId to UserDefaults: \(createdProfile.id)")
+            // Save shared userId to UserDefaults
+            UserDefaults.standard.set(Self.SHARED_ALBERT_USER_ID, forKey: "currentUserId")
+            print("💾 Saved shared Albert userId to UserDefaults: \(Self.SHARED_ALBERT_USER_ID)")
             
             // Set the profile in viewModel on main actor
             await MainActor.run {
@@ -158,7 +159,7 @@ class SproutViewModel: ObservableObject {
                 errorMessage = "Cannot connect to server. Make sure backend is running on port 4000."
             }
         } catch {
-            print("❌ Error creating default profile: \(error)")
+            print("❌ Error creating shared Albert profile: \(error)")
             print("   Error type: \(type(of: error))")
             print("   Error description: \(error.localizedDescription)")
             await MainActor.run {
@@ -243,23 +244,21 @@ class SproutViewModel: ObservableObject {
     }
     
     func sendChatMessage(_ text: String) async {
-        // Ensure profile is loaded before sending chat message
+        // Always use shared Albert user ID - chatbot works even without onboarding
+        let userId = Self.SHARED_ALBERT_USER_ID
+        
+        // Try to load profile if not loaded, but don't block chatbot
         if userProfile == nil {
-            print("🔄 Profile not loaded for chatbot, loading now...")
-            await loadProfile()
+            print("🔄 Profile not loaded for chatbot, loading in background...")
+            Task {
+                await loadProfile()
+            }
         }
         
-        guard let userId = userProfile?.id else {
-            print("❌ No user ID for chatbot after loading attempt")
-            await MainActor.run {
-                chatMessages.append(ChatMessage(isUser: false, text: "Unable to load profile. Please try again."))
-            }
-            return
-        }
         isLoading = true
         defer { isLoading = false }
         
-        print("💬 Sending chat message to backend:", text)
+        print("💬 Sending chat message to backend as Albert:", text)
         do {
             let response = try await apiClient.sendChatMessage(userId: userId, question: text)
             print("✅ Received AI response:", response.answer)
@@ -511,7 +510,7 @@ extension SproutViewModel {
     }
     
     var sproutName: String {
-        userProfile?.sproutName ?? "Bud"
+        userProfile?.sproutName ?? "Albert"
     }
     
     var sproutLevel: Int {

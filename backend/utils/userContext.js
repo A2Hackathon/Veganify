@@ -17,8 +17,31 @@ export async function getUserContext(userId) {
     };
   }
 
-  const userObjectId = toObjectId(userId);
-  const user = await User.findById(userObjectId).lean();
+  let user;
+  let userObjectId;
+  
+  // Handle shared Albert user
+  if (userId === "ALBERT_SHARED_USER") {
+    user = await User.findOne({ sproutName: "Albert" }).lean();
+    if (!user) {
+      // Return default context if Albert user doesn't exist yet
+      return {
+        user: {
+          dietLevel: "vegan",
+          extraForbiddenTags: [],
+          preferredCuisines: [],
+          cookingStylePreferences: [],
+        },
+        recipes: [],
+        impact: null,
+      };
+    }
+    userObjectId = user._id;
+  } else {
+    userObjectId = toObjectId(userId);
+    user = await User.findById(userObjectId).lean();
+  }
+  
   const impact = await UserImpact.findOne({ user_id: userObjectId }).lean();
   const recipes = await Recipe.find({ userId: userObjectId }).lean();
 

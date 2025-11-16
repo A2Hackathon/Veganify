@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema({
   },
   sproutName: {
     type: String,
-    default: "Bud",
+    default: "Albert",
   },
   createdAt: {
     type: Date,

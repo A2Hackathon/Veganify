@@ -51,7 +51,7 @@ struct UserProfile: Codable, Equatable {
         dietaryRestrictions: [],
         cuisinePreferences: [],
         cookingStylePreferences: [],
-        sproutName: "Bud",
+        sproutName: "Albert",
         level: 1,
         xp: 0,
         xpToNextLevel: 100,

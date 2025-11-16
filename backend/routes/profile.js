@@ -37,10 +37,54 @@ router.get("/", async (req, res) => {
     const userId = req.query.userId;
     if (!userId) return res.status(400).json({ error: "userId required" });
 
-    const userObjectId = toObjectId(userId);
-    const user = await User.findById(userObjectId).lean();
-    if (!user) return res.status(404).json({ error: "User not found" });
+    let user;
+    
+    // Handle shared Albert user - find or create user with sproutName "Albert"
+    if (userId === "ALBERT_SHARED_USER") {
+      console.log("🔍 Looking for shared Albert user...");
+      user = await User.findOne({ sproutName: "Albert" }).lean();
+      
+      if (!user) {
+        console.log("🌱 Shared Albert user not found, creating...");
+        // Create shared Albert user
+        const newUser = await User.create({
+          name: "User",
+          dietLevel: "vegan",
+          extraForbiddenTags: [],
+          preferredCuisines: [],
+          cookingStylePreferences: [],
+          sproutName: "Albert",
+        });
+        
+        // Create UserImpact for Albert
+        try {
+          await UserImpact.create({
+            user_id: newUser._id,
+            xp: 0,
+            coins: 0,
+            streak_days: 0,
+            total_meals_logged: 0,
+            forest_stage: "SEED",
+          });
+          console.log("✅ UserImpact created for shared Albert user");
+        } catch (impactErr) {
+          console.error("⚠️ Failed to create UserImpact for Albert (non-critical):", impactErr.message);
+        }
+        
+        user = newUser.toObject();
+        console.log("✅ Shared Albert user created with ID:", user._id.toString());
+      } else {
+        console.log("✅ Found existing shared Albert user:", user._id.toString());
+      }
+    } else {
+      // Regular user lookup by ObjectId
+      const userObjectId = toObjectId(userId);
+      user = await User.findById(userObjectId).lean();
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
 
+    // Get user's ObjectId for impact lookup
+    const userObjectId = user._id;
     const impact = await UserImpact.findOne({ user_id: userObjectId }).lean();
     const xp = impact?.xp || 0;
     const coins = impact?.coins || 0;

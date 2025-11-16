@@ -39,14 +39,46 @@ router.post("/profile", async (req, res) => {
 
     const dietLevel = eatingStyleToDietLevel(eatingStyle);
 
-    const user = await User.create({
-      name: "User",
-      dietLevel,
-      extraForbiddenTags: dietaryRestrictions || [],
-      preferredCuisines: cuisinePreferences || [],
-      cookingStylePreferences: cookingStylePreferences || [],
-      sproutName: sproutName || "Bud",
-    });
+    // If creating Albert profile, check if it already exists
+    let user;
+    if (sproutName === "Albert") {
+      console.log("🔍 Checking for existing Albert user...");
+      user = await User.findOne({ sproutName: "Albert" }).lean();
+      
+      if (user) {
+        console.log("✅ Found existing Albert user, updating preferences...");
+        // Update existing Albert user with new preferences
+        await User.findByIdAndUpdate(user._id, {
+          dietLevel,
+          extraForbiddenTags: dietaryRestrictions || [],
+          preferredCuisines: cuisinePreferences || [],
+          cookingStylePreferences: cookingStylePreferences || [],
+        });
+        user = await User.findById(user._id).lean();
+      } else {
+        console.log("🌱 Creating new Albert user...");
+        user = await User.create({
+          name: "User",
+          dietLevel,
+          extraForbiddenTags: dietaryRestrictions || [],
+          preferredCuisines: cuisinePreferences || [],
+          cookingStylePreferences: cookingStylePreferences || [],
+          sproutName: "Albert",
+        });
+        user = user.toObject();
+      }
+    } else {
+      // Create new user for non-Albert sprout names
+      user = await User.create({
+        name: "User",
+        dietLevel,
+        extraForbiddenTags: dietaryRestrictions || [],
+        preferredCuisines: cuisinePreferences || [],
+        cookingStylePreferences: cookingStylePreferences || [],
+        sproutName: sproutName || "Bud",
+      });
+      user = user.toObject();
+    }
 
     console.log("✅ User created in MongoDB with ID:", user._id.toString());
 
