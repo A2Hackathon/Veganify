@@ -10,9 +10,9 @@ extension Color {
     static let sproutGreenLighter = Color(hex: "8fb37f") // Even lighter
     static let sproutGreenMuted = Color(hex: "9db08d")   // Muted variant
     
-    // Accent colors
-    static let sproutYellow = Color(red: 1.0, green: 0.85, blue: 0.3)
-    static let sproutOrange = Color(red: 1.0, green: 0.65, blue: 0.25)
+    // Accent colors - ensure values are clamped to valid range
+    static let sproutYellow = Color(red: 1.0, green: 0.85, blue: 0.3, opacity: 1.0)
+    static let sproutOrange = Color(red: 1.0, green: 0.65, blue: 0.25, opacity: 1.0)
     
     // Background colors
     static let sproutBackground = Color(hex: "f5f7f3")
@@ -40,12 +40,17 @@ extension Color {
         default:
             (a, r, g, b) = (255, 0, 0, 0)
         }
+        // Ensure values are within valid range to prevent CoreGraphics errors
+        let red = max(0.0, min(1.0, Double(r) / 255.0))
+        let green = max(0.0, min(1.0, Double(g) / 255.0))
+        let blue = max(0.0, min(1.0, Double(b) / 255.0))
+        let opacity = max(0.0, min(1.0, Double(a) / 255.0))
         self.init(
             .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue: Double(b) / 255,
-            opacity: Double(a) / 255
+            red: red,
+            green: green,
+            blue: blue,
+            opacity: opacity
         )
     }
 }

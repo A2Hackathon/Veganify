@@ -4,6 +4,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var vm: SproutViewModel
+    @State private var isLoadingProfile = false
     
     var body: some View {
         NavigationStack {
@@ -150,6 +151,24 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
+        }
+        .onAppear {
+            // Ensure profile is loaded when settings view appears
+            if vm.userProfile == nil {
+                isLoadingProfile = true
+                Task {
+                    await vm.loadProfile()
+                    await MainActor.run {
+                        isLoadingProfile = false
+                    }
+                }
+            }
+        }
+        .overlay {
+            if isLoadingProfile {
+                ProgressView()
+                    .scaleEffect(1.5)
+            }
         }
     }
 }

@@ -143,8 +143,14 @@ struct DietaryRestrictionsEditorView: View {
     
     private func saveRestrictions() {
         Task {
+            // Ensure profile is loaded before saving
+            if vm.userProfile == nil {
+                print("🔄 Profile not loaded, loading now...")
+                await vm.loadProfile()
+            }
+            
             guard var profile = vm.userProfile else {
-                print("❌ Cannot save: No user profile")
+                print("❌ Cannot save: No user profile after loading attempt")
                 await MainActor.run {
                     dismiss()
                 }
@@ -244,8 +250,14 @@ struct CuisinePreferencesEditorView: View {
     
     private func saveCuisines() {
         Task {
+            // Ensure profile is loaded before saving
+            if vm.userProfile == nil {
+                print("🔄 Profile not loaded, loading now...")
+                await vm.loadProfile()
+            }
+            
             guard var profile = vm.userProfile else {
-                print("❌ Cannot save: No user profile")
+                print("❌ Cannot save: No user profile after loading attempt")
                 await MainActor.run {
                     dismiss()
                 }
@@ -344,8 +356,14 @@ struct CookingStyleEditorView: View {
     
     private func saveStyles() {
         Task {
+            // Ensure profile is loaded before saving
+            if vm.userProfile == nil {
+                print("🔄 Profile not loaded, loading now...")
+                await vm.loadProfile()
+            }
+            
             guard var profile = vm.userProfile else {
-                print("❌ Cannot save: No user profile")
+                print("❌ Cannot save: No user profile after loading attempt")
                 await MainActor.run {
                     dismiss()
                 }
@@ -446,8 +464,14 @@ struct EatingStyleEditorView: View {
     private func saveStyle() {
         guard let style = selectedStyle else { return }
         Task {
+            // Ensure profile is loaded before saving
+            if vm.userProfile == nil {
+                print("🔄 Profile not loaded, loading now...")
+                await vm.loadProfile()
+            }
+            
             guard var profile = vm.userProfile else {
-                print("❌ Cannot save: No user profile")
+                print("❌ Cannot save: No user profile after loading attempt")
                 await MainActor.run {
                     dismiss()
                 }

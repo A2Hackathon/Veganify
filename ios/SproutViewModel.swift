@@ -41,10 +41,24 @@ class SproutViewModel: ObservableObject {
         if let userId = UserDefaults.standard.string(forKey: "currentUserId") ?? userProfile?.id {
             // Profile exists, load it
             do {
-                userProfile = try await apiClient.getProfile(userId: userId)
+                print("🔄 Loading profile for userId: \(userId)")
+                let loadedProfile = try await apiClient.getProfile(userId: userId)
+                await MainActor.run {
+                    userProfile = loadedProfile
+                    print("✅ Profile loaded successfully: \(loadedProfile.id)")
+                }
                 await loadHomeData()
             } catch {
-                errorMessage = "Failed to load profile: \(error.localizedDescription)"
+                print("❌ Failed to load profile: \(error)")
+                // If loading fails, try creating a new profile
+                if error.localizedDescription.contains("404") || error.localizedDescription.contains("not found") {
+                    print("🔄 Profile not found in database, creating default profile...")
+                    await createDefaultProfile()
+                } else {
+                    await MainActor.run {
+                        errorMessage = "Failed to load profile: \(error.localizedDescription)"
+                    }
+                }
             }
         } else {
             // No profile exists, create a default one
@@ -171,9 +185,17 @@ class SproutViewModel: ObservableObject {
     }
     
     func sendChatMessage(_ text: String) async {
+        // Ensure profile is loaded before sending chat message
+        if userProfile == nil {
+            print("🔄 Profile not loaded for chatbot, loading now...")
+            await loadProfile()
+        }
+        
         guard let userId = userProfile?.id else {
-            print("❌ No user ID for chatbot")
-            chatMessages.append(ChatMessage(isUser: false, text: "Please complete onboarding first."))
+            print("❌ No user ID for chatbot after loading attempt")
+            await MainActor.run {
+                chatMessages.append(ChatMessage(isUser: false, text: "Unable to load profile. Please try again."))
+            }
             return
         }
         isLoading = true
