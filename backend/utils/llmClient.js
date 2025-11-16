@@ -11,7 +11,7 @@ const MODEL = "google/gemini-2.5-flash";
 //
 // 1. Extract ingredients
 //
-export async function extractIngredients(recipeText) {
+async function extractIngredients(recipeText) {
     const prompt = `
 Extract ALL ingredients from the recipe below.
 Return ONLY a list with ONE ingredient per line.
@@ -170,7 +170,7 @@ Return STRICT JSON:
 //
 // 4. Answer with context
 //
-export async function answerWithContext(userContext, userQuestion) {
+async function answerWithContext(userContext, userQuestion) {
     const prompt = `
 You are an AI assistant with access to the user's data.
 
@@ -208,7 +208,7 @@ Rules:
 //
 // 5. Generate vegan recipes
 //
-export async function generateRecipes(ingredients, count = 3) {
+async function generateRecipes(ingredients, count = 3) {
     const prompt = `
 Generate ${count} VEGAN recipes using these ingredients:
 
