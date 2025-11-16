@@ -13,9 +13,17 @@ const MODEL = "google/gemini-2.5-flash";
 //
 export async function extractIngredients(recipeText) {
   const prompt = `
-Extract ALL ingredients from the recipe below.
+Extract ALL ingredients from the recipe below. Be thorough and include EVERY ingredient mentioned, including:
+- All meats (beef, pork, chicken, turkey, lamb, veal, etc. - including ground, diced, sliced, whole, etc.)
+- All seafood (fish, shrimp, crab, lobster, etc.)
+- All dairy products (milk, cheese, butter, cream, yogurt, etc.)
+- All eggs and egg products
+- All animal-derived ingredients (broth, stock, gelatin, lard, etc.)
+- All other ingredients (vegetables, spices, oils, etc.)
+
 Return ONLY a list with ONE ingredient per line.
 No numbering. No explanations.
+Include the full ingredient name as written (e.g., "ground beef" not just "beef", "chicken breast" not just "chicken").
 
 Recipe:
 """
@@ -27,7 +35,7 @@ ${recipeText}
     const response = await client.chat.completions.create({
       model: MODEL,
       messages: [
-        { role: "system", content: "You extract ingredients from recipes." },
+        { role: "system", content: "You are a thorough ingredient extractor. Extract every single ingredient mentioned in recipes, especially animal products. Return only a plain list, one ingredient per line." },
         { role: "user", content: prompt },
       ],
     });
@@ -35,10 +43,15 @@ ${recipeText}
     const raw = response.choices?.[0]?.message?.content || "";
     const text = raw.trim();
 
-    return text
+    const extracted = text
       .split("\n")
-      .map((x) => x.replace(/^[-•]\s*/, "").trim())
-      .filter(Boolean);
+      .map((x) => x.replace(/^[-•*]\s*/, "").replace(/^\d+[.)]\s*/, "").trim())
+      .filter(Boolean)
+      .filter(x => x.length > 0);
+    
+    console.log(`📋 Extracted ${extracted.length} ingredients: ${extracted.join(", ")}`);
+    
+    return extracted;
   } catch (err) {
     console.error("extractIngredients error:", err);
     return [];
@@ -109,31 +122,66 @@ function extractCleanJSON(text) {
 // 3. Dietary check
 //
 export async function isAllowedForUser(userPrefs, ingredientTags) {
+  const dietLevel = userPrefs.dietLevel?.toLowerCase() || "vegan";
+  
   const prompt = `
 User dietary restrictions:
-- Level: ${userPrefs.dietLevel}
+- Level: ${dietLevel}
 - Forbidden tags: ${userPrefs.extraForbiddenTags?.join(", ") || "none"}
 
-Check each ingredient tag:
+IMPORTANT: For ${dietLevel} diet, the following are NOT ALLOWED:
+- ALL meat products (beef, pork, chicken, turkey, lamb, veal, duck, game meat, etc. - including ground, diced, sliced, whole, processed, etc.)
+- ALL seafood (fish, shrimp, crab, lobster, scallops, mussels, etc.)
+- ALL dairy products (milk, cheese, butter, cream, yogurt, sour cream, etc.)
+- ALL eggs and egg products
+- ALL animal-derived ingredients (chicken broth, beef stock, fish sauce, gelatin, lard, etc.)
+- Honey (for strict vegan)
+
+Check each ingredient carefully:
 ${ingredientTags.join(", ")}
+
+For each ingredient:
+1. Check if it contains ANY animal products (meat, seafood, dairy, eggs, animal-derived ingredients)
+2. If it's a compound ingredient (e.g., "chicken broth"), mark it as NotAllowed
+3. If it's ambiguous (e.g., "broth" without specification), mark as Ambiguous
+4. For NotAllowed ingredients, provide 2-3 specific vegan/plant-based substitute suggestions
 
 Return STRICT JSON:
 [
-  { "ingredient": "", "allowed": "Allowed|NotAllowed|Ambiguous", "reason": "" }
+  { 
+    "ingredient": "", 
+    "allowed": "Allowed|NotAllowed|Ambiguous", 
+    "reason": "Brief explanation",
+    "suggestions": []
+  }
 ]
+
+Be strict: When in doubt about animal products, mark as NotAllowed or Ambiguous.
+For "NotAllowed" ingredients, include at least 2-3 substitute suggestions in the suggestions array.
 `;
 
   try {
     const response = await client.chat.completions.create({
       model: MODEL,
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        { role: "system", content: `You are a strict dietary restriction analyzer for ${dietLevel} diets. You must identify ALL animal products including meat, seafood, dairy, eggs, and animal-derived ingredients. Be thorough and strict. Return only valid JSON arrays.` },
+        { role: "user", content: prompt }
+      ],
     });
 
     const raw = response.choices?.[0]?.message?.content || "";
     const cleaned = extractCleanJSON(raw);
 
     try {
-      return JSON.parse(cleaned);
+      const parsed = JSON.parse(cleaned);
+      console.log(`✅ isAllowedForUser: Analyzed ${ingredientTags.length} ingredients, got ${parsed.length} results`);
+      
+      return parsed.map(item => ({
+        ingredient: item.ingredient || "",
+        allowed: item.allowed || "Ambiguous",
+        reason: item.reason || "",
+        suggestions: Array.isArray(item.suggestions) ? item.suggestions : []
+      }));
     } catch (err) {
       console.error("❌ Failed to parse JSON from model");
       console.error("RAW OUTPUT:\n", raw);
@@ -144,15 +192,18 @@ Return STRICT JSON:
         ingredient: tag,
         allowed: "Ambiguous",
         reason: "Fallback — invalid JSON returned by model",
+        suggestions: []
       }));
     }
   } catch (err) {
     console.error("❌ isAllowedForUser ERROR:", err);
+    console.error("Error details:", err.message);
 
     return ingredientTags.map((tag) => ({
       ingredient: tag,
       allowed: "Ambiguous",
       reason: "System error",
+      suggestions: []
     }));
   }
 }

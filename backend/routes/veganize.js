@@ -34,36 +34,60 @@ router.post("/analyze", async (req, res) => {
       });
     }
 
+    console.log(`📝 Analyzing recipe content (${recipeContent.length} chars)...`);
     const ingredients = await extractIngredients(recipeContent);
+    console.log(`📋 Extracted ${ingredients.length} ingredients from recipe`);
 
     const prefs = {
       dietLevel: user.dietLevel || "vegan",
       extraForbiddenTags: user.extraForbiddenTags || [],
     };
+    
+    console.log(`🔍 Checking ingredients against diet: ${prefs.dietLevel}, restrictions: ${prefs.extraForbiddenTags.join(", ") || "none"}`);
 
     const checks = await isAllowedForUser(prefs, ingredients);
+    console.log(`🔍 Analyzed ${ingredients.length} ingredients, got ${checks.length} checks`);
+    
+    // Log all checks for debugging
+    checks.forEach(check => {
+      console.log(`  - ${check.ingredient}: ${check.allowed} (${check.reason})`);
+    });
 
     // Load substitutions config for suggestions
     const substitutions = JSON.parse(readFileSync(join(__dirname, "../config/substitutions.json"), "utf-8"));
     const dietLevel = user.dietLevel?.toLowerCase() || "vegan";
 
     const problematic = checks
-      .filter((c) => c.allowed !== "Allowed")
+      .filter((c) => {
+        const isProblematic = c.allowed !== "Allowed";
+        if (isProblematic) {
+          console.log(`⚠️ Problematic ingredient found: ${c.ingredient} (${c.allowed})`);
+        }
+        return isProblematic;
+      })
       .map((c) => {
-        // Get suggestions from substitutions config
-        const ingredientKey = c.ingredient.toUpperCase();
-        let suggestions = c.suggestions || [];
+        // Get suggestions from LLM response first
+        let suggestions = Array.isArray(c.suggestions) ? c.suggestions : [];
         
         // If no suggestions from LLM, try to get from substitutions config
-        if (suggestions.length === 0 && substitutions[ingredientKey]?.[dietLevel]) {
-          suggestions = substitutions[ingredientKey][dietLevel];
+        if (suggestions.length === 0) {
+          const ingredientKey = c.ingredient.toUpperCase();
+          if (substitutions[ingredientKey]?.[dietLevel]) {
+            suggestions = substitutions[ingredientKey][dietLevel];
+            console.log(`📋 Using substitution config for ${c.ingredient}: ${suggestions.join(", ")}`);
+          }
         }
+        
+        console.log(`✅ Returning problematic ingredient: ${c.ingredient} with ${suggestions.length} suggestions`);
         
         return {
           original: c.ingredient,
           suggestions: suggestions,
         };
       });
+
+    console.log(`📊 Total problematic ingredients: ${problematic.length}`);
+    console.log(`📋 Problematic ingredients: ${problematic.map(p => p.original).join(", ")}`);
 
     res.json({
       success: true,
