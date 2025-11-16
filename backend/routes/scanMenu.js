@@ -2,74 +2,72 @@ import express from "express";
 import multer from "multer";
 import Tesseract from "tesseract.js";
 import User from "../models/User.js";
-import { isAllowedForUser } from "../utils/llmClient.js";
+import { answerWithContext } from "../utils/llmClient.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
-router.post('/', upload.single('image'), async (req, res) => {
+// POST /scan/menu (image, returns MenuDish[])
+router.post("/", upload.single("image"), async (req, res) => {
+  try {
+    const userId = req.query.userId || req.body.userId;
+    if (!userId) return res.status(400).json({ error: "userId required" });
+    if (!req.file) return res.status(400).json({ error: "image required" });
+
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const result = await Tesseract.recognize(req.file.path, "eng");
+    const text = result.data.text || "";
+
+    const dishes = text
+      .split("\n")
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+    if (!dishes.length) return res.json({ dishes: [] });
+
+    const prompt = `
+You will classify menu dishes for a ${user.dietLevel} eater.
+
+DISHES:
+${dishes.join("\n")}
+
+For each dish, respond as JSON array:
+[
+  { "name": "", "status": "suitable|modifiable|not_suitable", "modificationSuggestion": "" }
+]
+`;
+
+    const ctx = {};
+    const answer = await answerWithContext(ctx, prompt);
+
+    let parsed;
     try {
-        const userID = req.query.userId || req.body.userID || req.body.userId;
-
-        if (!req.file) {
-            return res.status(400).json({ success: false, error: "Image is required" });
-        }
-
-        // Load user preferences
-        const user = await User.findById(userID);
-        if (!user) return res.status(404).json({ success: false, error: "User not found" });
-
-        const userPrefs = {
-            dietLevel: user.dietLevel,
-            extraForbiddenTags: user.extraForbiddenTags || []
-        };
-
-        // OCR
-        const ocrResult = await Tesseract.recognize(req.file.path, 'eng');
-        let lines = ocrResult.data.lines.map(l => l.text.trim());
-
-        // Clean each line
-        lines = lines
-            .map(line => line.replace(/[^a-zA-Z ]/g, "").trim())
-            .filter(line => line.length > 0);
-
-        // Check each line as a possible dish
-        const results = [];
-
-        console.log("🔍 Calling LLM (isAllowedForUser) for menu scan...");
-        for (const line of lines) {
-            const check = await isAllowedForUser(userPrefs, [line]);
-            const first = check[0] || { allowed: "Ambiguous", reason: "" };
-
-            results.push({
-                ingredient: line,
-                allowed: first.allowed,
-                reason: first.reason || ""
-            });
-        }
-
-        // Format for iOS MenuDish format
-        const dishes = results.map(item => {
-            let status = "suitable";
-            if (item.allowed === "NotAllowed") {
-                status = "not_suitable";
-            } else if (item.allowed === "Ambiguous") {
-                status = "modifiable";
-            }
-            return {
-                name: item.ingredient,
-                status: status, // "suitable" | "modifiable" | "not_suitable"
-                modificationSuggestion: item.allowed !== "Allowed" ? (item.reason || "May need modifications") : null
-            };
-        });
-        
-        console.log("✅ LLM analyzed", results.length, "menu items");
-        res.json({ dishes: dishes });
-
+      const cleaned = answer.replace(/```json/gi, "").replace(/```/g, "");
+      const match = cleaned.match(/\[[\s\S]*\]/);
+      parsed = JSON.parse(match ? match[0] : cleaned);
     } catch (err) {
-        console.error("Error scanning menu:", err);
-        res.status(500).json({ success: false, error: "Internal server error" });
+      console.error("menu JSON parse error:", err);
+      // fallback: mark all as ambiguous/modifiable
+      parsed = dishes.map((name) => ({
+        name,
+        status: "modifiable",
+        modificationSuggestion: "Ask to remove any meat or dairy.",
+      }));
     }
+
+    const resultDishes = parsed.map((d) => ({
+      name: d.name,
+      status: d.status,
+      modificationSuggestion: d.modificationSuggestion || null,
+    }));
+
+    res.json({ dishes: resultDishes });
+  } catch (err) {
+    console.error("scan menu error:", err);
+    res.status(500).json({ error: "Failed to scan menu" });
+  }
 });
 
 export default router;

@@ -1,10 +1,21 @@
-// routes/onboarding.js
 import express from "express";
 import User from "../models/User.js";
 import UserImpact from "../models/UserImpact.js";
-import { swiftToBackendDietLevel, backendToSwiftDietLevel } from "../utils/eatingStyleMapper.js";
 
 const router = express.Router();
+
+// helper: map EatingStyle display string → backend code
+function eatingStyleToDietLevel(eatingStyle) {
+  if (!eatingStyle) return "flexitarian";
+  const val = eatingStyle.toLowerCase();
+  if (val.includes("vegan")) return "vegan";
+  if (val.includes("ovo-vegetarian")) return "ovo";
+  if (val.includes("lacto-ovo")) return "lacto_ovo";
+  if (val.includes("lacto-vegetarian")) return "lacto";
+  if (val.includes("pescatarian")) return "pescatarian";
+  if (val.includes("vegetarian")) return "vegetarian";
+  return "flexitarian";
+}
 
 // POST /onboarding/profile
 router.post("/profile", async (req, res) => {
@@ -17,16 +28,11 @@ router.post("/profile", async (req, res) => {
       sproutName,
     } = req.body;
 
-    if (!eatingStyle) {
-      return res.status(400).json({ error: "eatingStyle is required" });
-    }
-
-    // Convert Swift EatingStyle to backend dietLevel
-    const backendDietLevel = swiftToBackendDietLevel(eatingStyle);
+    const dietLevel = eatingStyleToDietLevel(eatingStyle);
 
     const user = await User.create({
       name: "User",
-      dietLevel: backendDietLevel,
+      dietLevel,
       extraForbiddenTags: dietaryRestrictions || [],
       preferredCuisines: cuisinePreferences || [],
       cookingStylePreferences: cookingStylePreferences || [],
@@ -36,21 +42,20 @@ router.post("/profile", async (req, res) => {
     await UserImpact.create({
       user_id: user._id,
       xp: 0,
-      total_meals_logged: 0,
+      coins: 0,
       streak_days: 0,
+      total_meals_logged: 0,
       forest_stage: "SEED",
-      last_activity_date: null,
     });
 
-    // Return in Swift UserProfile format
     const profile = {
       id: user._id.toString(),
-      userName: "User",
-      eatingStyle: backendToSwiftDietLevel(backendDietLevel), // Convert back to Swift format
+      userName: user.name || "User",
+      eatingStyle,
       dietaryRestrictions: user.extraForbiddenTags || [],
       cuisinePreferences: user.preferredCuisines || [],
-      cookingStylePreferences: cookingStylePreferences || [],
-      sproutName: sproutName || "Bud",
+      cookingStylePreferences: user.cookingStylePreferences || [],
+      sproutName: user.sproutName || "Bud",
       level: 1,
       xp: 0,
       xpToNextLevel: 100,

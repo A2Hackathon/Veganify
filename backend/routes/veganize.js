@@ -1,104 +1,116 @@
 import express from "express";
-import { readFileSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
 import User from "../models/User.js";
-import { extractIngredients, rewriteRecipeSteps } from "../utils/llmClient.js";
-
+import Recipe from "../models/Recipe.js";
+import { extractIngredients, rewriteRecipeSteps, isAllowedForUser } from "../utils/llmClient.js";
 
 const router = express.Router();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const substitutions = JSON.parse(readFileSync(join(__dirname, "../config/substitutions.json"), "utf-8"));
+function mapStatus(s) {
+  const v = (s || "").toLowerCase();
+  if (v.includes("not")) return "not_allowed";
+  if (v.includes("ambig")) return "ambiguous";
+  return "allowed";
+}
 
-// Step 1: Analyze ingredients only
-router.post('/analyze', async (req, res) => {
-    try {
-        const { userID, recipe } = req.body;
-
-        if (!recipe) {
-            return res.status(400).json({
-                success: false,
-                error: "Recipe text is required"
-            });
-        }
-
-        const user = await User.findById(userID);
-        const dietLevel = user.dietLevel?.toLowerCase();
-        const extraForbiddenTags = user.extraForbiddenTags || [];
-
-        console.log("🔍 Calling LLM (extractIngredients) for veganize analyze...");
-        const ingredients = await extractIngredients(recipe);
-        console.log("✅ LLM extracted", ingredients.length, "ingredients");
-
-        const problems = []; 
-
-        for (const ing of ingredients) {
-            const key = ing.toUpperCase();
-            const subs = substitutions[key]?.[dietLevel] || [];
-
-            const violatesDiet =
-                // No substitution available AND user is restrictive
-                (subs.length === 0 && dietLevel !== "flexitarian") ||
-                // Ingredient contains user forbidden tags
-                extraForbiddenTags.some(tag => ing.toLowerCase().includes(tag.toLowerCase()));
-
-            if (violatesDiet) {
-                problems.push({
-                    original: ing,
-                    suggestions: subs   // ⬅️ MULTIPLE substitutions returned
-                });
-            }
-        }
-
-        res.json({
-            success: true,
-            violatesCount: problems.length,
-            problematicIngredients: problems
-        });
-
-    } catch (err) {
-        console.error("Analyze error:", err);
-        res.status(500).json({ success: false, error: "Internal server error" });
+// POST /veganize/analyze
+router.post("/analyze", async (req, res) => {
+  try {
+    const { userId, recipeText } = req.body;
+    if (!userId || !recipeText) {
+      return res.status(400).json({ error: "userId and recipeText required" });
     }
+
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const ingredients = await extractIngredients(recipeText);
+
+    const prefs = {
+      dietLevel: user.dietLevel || "vegan",
+      extraForbiddenTags: user.extraForbiddenTags || [],
+    };
+
+    const checks = await isAllowedForUser(prefs, ingredients);
+
+    const problematic = checks
+      .filter((c) => c.allowed !== "Allowed")
+      .map((c) => ({
+        name: c.ingredient,
+        status: mapStatus(c.allowed),
+        reason: c.reason || "",
+        suggestions: c.suggestions || [],
+      }));
+
+    res.json({
+      violatesCount: problematic.length,
+      problematicIngredients: problematic,
+    });
+  } catch (err) {
+    console.error("veganize analyze error:", err);
+    res.status(500).json({ error: "Failed to analyze recipe" });
+  }
 });
 
-
-// Step 2: Apply user-selected substitutes & rewrite recipe
-router.post('/commit', async (req, res) => {
-    try {
-        const { recipe, chosenSubs } = req.body;
-
-        if (!recipe?.text || !chosenSubs) {
-            return res.status(400).json({
-                success: false,
-                error: "recipe.text and chosenSubs are required"
-            });
-        }
-
-        const adaptedIngredients = chosenSubs.map(item => ({
-            original: item.original,
-            substitute: item.substitute
-        }));
-
-        console.log("🔍 Calling LLM (rewriteRecipeSteps) for veganize commit...");
-        const newRecipe = await rewriteRecipeSteps(adaptedIngredients, recipe.text);
-        console.log("✅ LLM rewrote recipe successfully");
-
-        res.json({
-            success: true,
-            adaptedRecipe: {
-                ingredients: adaptedIngredients,
-                text: newRecipe
-            }
-        });
-
-
-    } catch (err) {
-        console.error("Commit error:", err);
-        res.status(500).json({ success: false, error: "Internal server error" });
+// POST /veganize/commit
+router.post("/commit", async (req, res) => {
+  try {
+    const { userId, recipeText, substitutions, originalPrompt } = req.body;
+    if (!userId || !recipeText || !Array.isArray(substitutions)) {
+      return res
+        .status(400)
+        .json({ error: "userId, recipeText and substitutions required" });
     }
+
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const rewritten = await rewriteRecipeSteps(substitutions, recipeText);
+
+    // simple split of steps by line
+    const steps = rewritten
+      .split("\n")
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+    const substitutionMap = {};
+    substitutions.forEach((s) => {
+      if (s.original && s.substitute) {
+        substitutionMap[s.original] = s.substitute;
+      }
+    });
+
+    const recipe = await Recipe.create({
+      userId,
+      title: "Veganized Recipe",
+      tags: ["veganized"],
+      duration: "",
+      ingredients: [],
+      steps,
+      previewImageUrl: "",
+      originalPrompt: originalPrompt || "",
+      type: "veganized",
+      substitutionMap,
+    });
+
+    const adaptedRecipe = {
+      id: recipe._id.toString(),
+      userId: recipe.userId?.toString() || null,
+      title: recipe.title,
+      tags: recipe.tags,
+      duration: recipe.duration,
+      ingredients: recipe.ingredients,
+      steps: recipe.steps,
+      previewImageUrl: recipe.previewImageUrl,
+      originalPrompt: recipe.originalPrompt,
+      type: recipe.type,
+      substitutionMap: recipe.substitutionMap,
+    };
+
+    res.json({ adaptedRecipe });
+  } catch (err) {
+    console.error("veganize commit error:", err);
+    res.status(500).json({ error: "Failed to veganize recipe" });
+  }
 });
 
 export default router;

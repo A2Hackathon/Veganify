@@ -1,29 +1,24 @@
-// utils/userContext.js
-import UserImpact from "../models/UserImpact.js";
-import Recipe from "../models/Recipe.js";
 import User from "../models/User.js";
+import Recipe from "../models/Recipe.js";
+import UserImpact from "../models/UserImpact.js";
 
-/**
- * Fetches all relevant user data from MongoDB for AI context
- * @param {string} user_id - MongoDB ObjectId
- * @returns {Object} user context including recipes, dietary prefs, and impact
- */
-export async function getUserContext(user_id) {
-  // Basic safety
-  if (!user_id) {
+export async function getUserContext(userId) {
+  if (!userId) {
     return {
       user: {
         dietLevel: "flexitarian",
         extraForbiddenTags: [],
+        preferredCuisines: [],
+        cookingStylePreferences: [],
       },
       recipes: [],
       impact: null,
     };
   }
 
-  const user = await User.findById(user_id).lean();
-  const userRecipes = await Recipe.find({ userID: user_id }).lean();
-  const impact = await UserImpact.findOne({ user_id }).lean();
+  const user = await User.findById(userId).lean();
+  const impact = await UserImpact.findOne({ user_id: userId }).lean();
+  const recipes = await Recipe.find({ userId }).lean();
 
   return {
     user: {
@@ -32,11 +27,19 @@ export async function getUserContext(user_id) {
       preferredCuisines: user?.preferredCuisines || [],
       cookingStylePreferences: user?.cookingStylePreferences || [],
     },
-    // flatten array of arrays to single list of recipe items
-    recipes: (userRecipes || [])
-      .map((r) => r.recipe || [])
-      .flat()
-      .filter(Boolean),
-    impact: impact || null,
+    recipes: recipes.map((r) => ({
+      id: r._id.toString(),
+      title: r.title,
+      tags: r.tags,
+      duration: r.duration,
+    })),
+    impact: impact
+      ? {
+          xp: impact.xp,
+          coins: impact.coins,
+          streak_days: impact.streak_days,
+          total_meals_logged: impact.total_meals_logged,
+        }
+      : null,
   };
 }

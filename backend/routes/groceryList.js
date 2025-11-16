@@ -1,7 +1,8 @@
 import express from "express";
+import GroceryItem from "../models/GroceryItem.js";
+import User from "../models/User.js";
 import multer from "multer";
 import Tesseract from "tesseract.js";
-import Grocery from "../models/grocery.js";
 
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
@@ -10,26 +11,22 @@ const upload = multer({ dest: "uploads/" });
 router.get("/", async (req, res) => {
   try {
     const userId = req.query.userId;
+    if (!userId) return res.status(400).json({ error: "userId required" });
 
-    if (!userId) {
-      return res.status(400).json({ error: "userId is required" });
-    }
+    const items = await GroceryItem.find({ userId }).lean();
 
-    const groceries = await Grocery.find({ userID: userId });
-
-    // Map to iOS GroceryItem format - exact match to Swift model
-    const items = groceries.map(g => ({
-      id: g._id.toString(),
-      name: g.name,
-      category: g.category || "Produce",
-      isChecked: g.isChecked || false,
-      userId: g.userID?.toString() || null
+    const result = items.map((i) => ({
+      id: i._id.toString(),
+      name: i.name,
+      category: i.category || "Uncategorized",
+      isChecked: !!i.isChecked,
+      userId: i.userId.toString(),
     }));
 
-    res.json(items);
+    res.json(result);
   } catch (err) {
-    console.error("Get grocery list error:", err);
-    res.status(500).json({ error: "Failed to get grocery list" });
+    console.error("get grocery-list error:", err);
+    res.status(500).json({ error: "Failed to load grocery list" });
   }
 });
 
@@ -37,120 +34,69 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const { userId, name, category } = req.body;
+    if (!userId || !name)
+      return res.status(400).json({ error: "userId and name required" });
 
-    if (!userId || !name) {
-      return res.status(400).json({ error: "userId and name are required" });
-    }
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    const grocery = await Grocery.create({
-      userID: userId,
-      name: name,
-      category: category || "Produce",
-      isChecked: false
+    const item = await GroceryItem.create({
+      userId,
+      name,
+      category: category || "Uncategorized",
     });
 
-    // Return in iOS GroceryItem format
-    const item = {
-      id: grocery._id.toString(),
-      name: grocery.name,
-      category: grocery.category || "Produce",
-      isChecked: grocery.isChecked || false,
-      userId: grocery.userID?.toString() || null
-    };
-
-    res.json(item);
+    res.json({
+      id: item._id.toString(),
+      name: item.name,
+      category: item.category,
+      isChecked: item.isChecked,
+      userId: item.userId.toString(),
+    });
   } catch (err) {
-    console.error("Add grocery item error:", err);
+    console.error("add grocery item error:", err);
     res.status(500).json({ error: "Failed to add grocery item" });
-  }
-});
-
-// PATCH /grocery-list/:id (for toggling checked status)
-router.patch("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { isChecked } = req.body;
-
-    const grocery = await Grocery.findById(id);
-    if (!grocery) {
-      return res.status(404).json({ error: "Grocery item not found" });
-    }
-
-    if (isChecked !== undefined) {
-      grocery.isChecked = isChecked;
-      await grocery.save();
-    }
-
-    const item = {
-      id: grocery._id.toString(),
-      name: grocery.name,
-      category: grocery.category || "Produce",
-      isChecked: grocery.isChecked || false,
-      userId: grocery.userID?.toString() || null
-    };
-
-    res.json(item);
-  } catch (err) {
-    console.error("Update grocery item error:", err);
-    res.status(500).json({ error: "Failed to update grocery item" });
-  }
-});
-
-// DELETE /grocery-list/:id
-router.delete("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    await Grocery.findByIdAndDelete(id);
-    res.json({ success: true });
-  } catch (err) {
-    console.error("Delete grocery item error:", err);
-    res.status(500).json({ error: "Failed to delete grocery item" });
   }
 });
 
 // POST /grocery-list/scan-fridge?userId=...
 router.post("/scan-fridge", upload.single("image"), async (req, res) => {
   try {
-    const userId = req.query.userId;
-
-    if (!userId) {
-      return res.status(400).json({ error: "userId is required" });
-    }
-
+    const userId = req.query.userId || req.body.userId;
+    if (!userId) return res.status(400).json({ error: "userId required" });
     if (!req.file) {
-      return res.status(400).json({ error: "Image is required" });
+      return res.status(400).json({ error: "image required" });
     }
 
     // OCR the image
-    const ocrResult = await Tesseract.recognize(req.file.path, "eng");
-    const text = ocrResult.data.text;
+    const result = await Tesseract.recognize(req.file.path, "eng");
+    const text = result.data.text || "";
 
-    // Split into lines and extract items
-    const lines = text.split("\n")
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
+    // naive: split by newline / comma and treat each line as a grocery item
+    const lines = text
+      .split(/[\n,]/)
+      .map((x) => x.trim())
+      .filter(Boolean);
 
-    const items = [];
+    const createdItems = [];
     for (const line of lines) {
-      const grocery = await Grocery.create({
-        userID: userId,
+      const item = await GroceryItem.create({
+        userId,
         name: line,
-        category: "Produce",
-        isChecked: false
+        category: "Uncategorized",
       });
-
-      items.push({
-        id: grocery._id.toString(),
-        name: grocery.name,
-        category: grocery.category || "Produce",
-        isChecked: false,
-        userId: grocery.userID?.toString() || null
+      createdItems.push({
+        id: item._id.toString(),
+        name: item.name,
+        category: item.category,
+        isChecked: item.isChecked,
+        userId: item.userId.toString(),
       });
     }
 
-    res.json(items);
+    res.json(createdItems);
   } catch (err) {
-    console.error("Scan fridge error:", err);
+    console.error("scan-fridge error:", err);
     res.status(500).json({ error: "Failed to scan fridge" });
   }
 });
@@ -158,47 +104,39 @@ router.post("/scan-fridge", upload.single("image"), async (req, res) => {
 // POST /grocery-list/scan-receipt?userId=...
 router.post("/scan-receipt", upload.single("image"), async (req, res) => {
   try {
-    const userId = req.query.userId;
-
-    if (!userId) {
-      return res.status(400).json({ error: "userId is required" });
-    }
-
+    const userId = req.query.userId || req.body.userId;
+    if (!userId) return res.status(400).json({ error: "userId required" });
     if (!req.file) {
-      return res.status(400).json({ error: "Image is required" });
+      return res.status(400).json({ error: "image required" });
     }
 
-    // OCR the receipt
-    const ocrResult = await Tesseract.recognize(req.file.path, "eng");
-    const text = ocrResult.data.text;
+    const result = await Tesseract.recognize(req.file.path, "eng");
+    const text = result.data.text || "";
 
-    // Clean and extract items
-    const cleaned = text.replace(/[^a-zA-Z\s]/g, " ");
-    const lines = cleaned.split("\n")
-      .map(l => l.trim())
-      .filter(l => l.length > 1);
+    const lines = text
+      .split(/[\n,]/)
+      .map((x) => x.trim())
+      .filter(Boolean);
 
-    const items = [];
+    const createdItems = [];
     for (const line of lines) {
-      const grocery = await Grocery.create({
-        userID: userId,
+      const item = await GroceryItem.create({
+        userId,
         name: line,
-        category: "Produce",
-        isChecked: false
+        category: "Uncategorized",
       });
-
-      items.push({
-        id: grocery._id.toString(),
-        name: grocery.name,
-        category: grocery.category || "Produce",
-        isChecked: false,
-        userId: grocery.userID?.toString() || null
+      createdItems.push({
+        id: item._id.toString(),
+        name: item.name,
+        category: item.category,
+        isChecked: item.isChecked,
+        userId: item.userId.toString(),
       });
     }
 
-    res.json(items);
+    res.json(createdItems);
   } catch (err) {
-    console.error("Scan receipt error:", err);
+    console.error("scan-receipt error:", err);
     res.status(500).json({ error: "Failed to scan receipt" });
   }
 });
