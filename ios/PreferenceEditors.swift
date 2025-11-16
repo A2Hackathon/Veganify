@@ -147,10 +147,21 @@ struct DietaryRestrictionsEditorView: View {
             if vm.userProfile == nil {
                 print("🔄 Profile not loaded, loading now...")
                 await vm.loadProfile()
+                
+                // Wait a moment and check again
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+            }
+            
+            // Double-check profile is available
+            if vm.userProfile == nil {
+                print("❌ Profile still nil after loadProfile. Attempting to create default...")
+                await vm.loadProfile() // Try again
+                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
             }
             
             guard var profile = vm.userProfile else {
                 print("❌ Cannot save: No user profile after loading attempt")
+                print("   UserDefaults userId: \(UserDefaults.standard.string(forKey: "currentUserId") ?? "nil")")
                 await MainActor.run {
                     dismiss()
                 }
@@ -254,10 +265,18 @@ struct CuisinePreferencesEditorView: View {
             if vm.userProfile == nil {
                 print("🔄 Profile not loaded, loading now...")
                 await vm.loadProfile()
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+            }
+            
+            if vm.userProfile == nil {
+                print("❌ Profile still nil after loadProfile. Attempting to create default...")
+                await vm.loadProfile() // Try again
+                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
             }
             
             guard var profile = vm.userProfile else {
                 print("❌ Cannot save: No user profile after loading attempt")
+                print("   UserDefaults userId: \(UserDefaults.standard.string(forKey: "currentUserId") ?? "nil")")
                 await MainActor.run {
                     dismiss()
                 }
@@ -360,10 +379,18 @@ struct CookingStyleEditorView: View {
             if vm.userProfile == nil {
                 print("🔄 Profile not loaded, loading now...")
                 await vm.loadProfile()
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+            }
+            
+            if vm.userProfile == nil {
+                print("❌ Profile still nil after loadProfile. Attempting to create default...")
+                await vm.loadProfile() // Try again
+                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
             }
             
             guard var profile = vm.userProfile else {
                 print("❌ Cannot save: No user profile after loading attempt")
+                print("   UserDefaults userId: \(UserDefaults.standard.string(forKey: "currentUserId") ?? "nil")")
                 await MainActor.run {
                     dismiss()
                 }
@@ -468,10 +495,18 @@ struct EatingStyleEditorView: View {
             if vm.userProfile == nil {
                 print("🔄 Profile not loaded, loading now...")
                 await vm.loadProfile()
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second
+            }
+            
+            if vm.userProfile == nil {
+                print("❌ Profile still nil after loadProfile. Attempting to create default...")
+                await vm.loadProfile() // Try again
+                try? await Task.sleep(nanoseconds: 200_000_000) // 0.2 seconds
             }
             
             guard var profile = vm.userProfile else {
                 print("❌ Cannot save: No user profile after loading attempt")
+                print("   UserDefaults userId: \(UserDefaults.standard.string(forKey: "currentUserId") ?? "nil")")
                 await MainActor.run {
                     dismiss()
                 }

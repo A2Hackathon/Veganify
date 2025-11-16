@@ -99,6 +99,27 @@ class APIClient {
             if let urlError = error as? URLError {
                 print("   URL Error code: \(urlError.code.rawValue)")
                 print("   URL Error description: \(urlError.localizedDescription)")
+                
+                // Provide helpful error messages for common connection issues
+                switch urlError.code {
+                case .cannotConnectToHost:
+                    print("   ⚠️ Cannot connect to server at \(fullURL)")
+                    print("   💡 Make sure:")
+                    print("      1. Backend server is running (npm start or npm run dev)")
+                    print("      2. Server is running on port 4000")
+                    print("      3. If using physical device, use your computer's IP address instead of localhost")
+                    print("      4. Check firewall settings")
+                case .timedOut:
+                    print("   ⚠️ Connection timed out")
+                    print("   💡 Server may be slow or unreachable")
+                case .notConnectedToInternet:
+                    print("   ⚠️ No internet connection")
+                case .cannotFindHost:
+                    print("   ⚠️ Cannot find host")
+                    print("   💡 Check if the server URL is correct: \(fullURL)")
+                default:
+                    break
+                }
             }
             throw error
         }

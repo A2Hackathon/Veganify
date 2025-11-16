@@ -34,8 +34,14 @@ class SproutViewModel: ObservableObject {
     // MARK: - Profile Management
     
     func loadProfile() async {
-        isLoading = true
-        defer { isLoading = false }
+        await MainActor.run {
+            isLoading = true
+        }
+        defer {
+            Task { @MainActor in
+                isLoading = false
+            }
+        }
         
         // Try to get userId from UserDefaults first (saved during onboarding)
         if let userId = UserDefaults.standard.string(forKey: "currentUserId") ?? userProfile?.id {
@@ -50,20 +56,43 @@ class SproutViewModel: ObservableObject {
                 await loadHomeData()
             } catch {
                 print("❌ Failed to load profile: \(error)")
+                print("   Error type: \(type(of: error))")
+                print("   Error description: \(error.localizedDescription)")
+                
+                // Check if it's a connection error
+                if let urlError = error as? URLError {
+                    print("   URLError code: \(urlError.code.rawValue)")
+                    if urlError.code == .cannotConnectToHost || urlError.code == .notConnectedToInternet || urlError.code.rawValue == -1084 {
+                        print("⚠️ Cannot connect to server. Creating local fallback profile...")
+                        await createLocalFallbackProfile()
+                        return
+                    }
+                }
+                
                 // If loading fails, try creating a new profile
-                if error.localizedDescription.contains("404") || error.localizedDescription.contains("not found") {
+                let errorString = error.localizedDescription.lowercased()
+                if errorString.contains("404") || errorString.contains("not found") {
                     print("🔄 Profile not found in database, creating default profile...")
                     await createDefaultProfile()
                 } else {
-                    await MainActor.run {
-                        errorMessage = "Failed to load profile: \(error.localizedDescription)"
-                    }
+                    // For other errors, try creating a default profile
+                    print("🔄 Other error, attempting to create default profile...")
+                    await createDefaultProfile()
                 }
             }
         } else {
             // No profile exists, create a default one
-            print("🌱 No profile found. Creating default profile...")
+            print("🌱 No userId found in UserDefaults. Creating default profile...")
             await createDefaultProfile()
+        }
+        
+        // Verify profile was set
+        await MainActor.run {
+            if userProfile == nil {
+                print("⚠️ WARNING: Profile is still nil after loadProfile() completed")
+            } else {
+                print("✅ Profile verified: \(userProfile!.id)")
+            }
         }
     }
     
@@ -93,9 +122,19 @@ class SproutViewModel: ObservableObject {
             UserDefaults.standard.set(createdProfile.id, forKey: "currentUserId")
             print("💾 Saved userId to UserDefaults: \(createdProfile.id)")
             
-            // Set the profile in viewModel
+            // Set the profile in viewModel on main actor
             await MainActor.run {
                 userProfile = createdProfile
+                print("✅ Profile set in viewModel: \(userProfile?.id ?? "nil")")
+            }
+            
+            // Verify it was set
+            await MainActor.run {
+                if userProfile == nil {
+                    print("❌ CRITICAL: Profile is nil after setting in createDefaultProfile!")
+                } else {
+                    print("✅ Profile verified in viewModel: \(userProfile!.id)")
+                }
             }
             
             // Mark onboarding as completed since we have a profile
@@ -103,9 +142,26 @@ class SproutViewModel: ObservableObject {
             
             // Load home data
             await loadHomeData()
+        } catch let error as URLError where error.code == .cannotConnectToHost {
+            print("❌ Cannot connect to backend server")
+            print("   💡 Troubleshooting steps:")
+            print("      1. Make sure backend server is running:")
+            print("         cd backend && npm start (or npm run dev)")
+            print("      2. Check if server is running on port 4000")
+            print("      3. If using physical device (not simulator):")
+            print("         - Find your computer's IP address (ipconfig on Windows)")
+            print("         - Update APIClient.swift baseURL to use your IP instead of localhost")
+            print("      4. Check Windows Firewall settings")
+            await MainActor.run {
+                errorMessage = "Cannot connect to server. Make sure backend is running on port 4000."
+            }
         } catch {
             print("❌ Error creating default profile: \(error)")
-            errorMessage = "Failed to create profile: \(error.localizedDescription)"
+            print("   Error type: \(type(of: error))")
+            print("   Error description: \(error.localizedDescription)")
+            await MainActor.run {
+                errorMessage = "Failed to create profile: \(error.localizedDescription)"
+            }
         }
     }
     
