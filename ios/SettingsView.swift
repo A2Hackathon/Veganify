@@ -177,8 +177,17 @@ struct ProfileEditView: View {
                 
                 Section {
                     Button {
-                        vm.userName = userName.isEmpty ? vm.userName : userName
-                        vm.sproutName = sproutName.isEmpty ? vm.sproutName : sproutName
+                        Task {
+                            if var profile = vm.userProfile {
+                                if !userName.isEmpty {
+                                    profile.userName = userName
+                                }
+                                if !sproutName.isEmpty {
+                                    profile.sproutName = sproutName
+                                }
+                                await vm.updateProfile(profile)
+                            }
+                        }
                         dismiss()
                     } label: {
                         HStack {

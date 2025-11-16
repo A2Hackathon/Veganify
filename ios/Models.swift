@@ -73,13 +73,14 @@ struct Mission: Identifiable, Codable {
 // MARK: - Chat Models
 
 struct ChatMessage: Identifiable {
-    let id = UUID()
+    let id: UUID
     let isUser: Bool
     let text: String
     let recipe: Recipe?
     let timestamp: Date
     
     init(isUser: Bool, text: String, recipe: Recipe? = nil) {
+        self.id = UUID()
         self.isUser = isUser
         self.text = text
         self.recipe = recipe
@@ -145,18 +146,52 @@ enum IngredientStatus: String, Codable {
 }
 
 struct IngredientClassification: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     let name: String
     let status: IngredientStatus
     let reason: String
     let suggestions: [String]?
+    
+    init(name: String, status: IngredientStatus, reason: String, suggestions: [String]? = nil) {
+        self.id = UUID()
+        self.name = name
+        self.status = status
+        self.reason = reason
+        self.suggestions = suggestions
+    }
 }
 
 struct MenuDish: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     let name: String
     let status: DishStatus
     let modificationSuggestion: String?
+    
+    init(name: String, status: DishStatus, modificationSuggestion: String? = nil) {
+        self.id = UUID()
+        self.name = name
+        self.status = status
+        self.modificationSuggestion = modificationSuggestion
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case name, status, modificationSuggestion
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = UUID()
+        self.name = try container.decode(String.self, forKey: .name)
+        self.status = try container.decode(DishStatus.self, forKey: .status)
+        self.modificationSuggestion = try container.decodeIfPresent(String.self, forKey: .modificationSuggestion)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(name, forKey: .name)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(modificationSuggestion, forKey: .modificationSuggestion)
+    }
     
     enum DishStatus: String, Codable {
         case suitable = "suitable"
