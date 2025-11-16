@@ -15,7 +15,14 @@ import aiAskRoutes from "./routes/aiAsk.js";
 
 dotenv.config();
 
-await connectDB(); // connect to MongoDB
+// Connect to MongoDB
+try {
+  await connectDB(); // connect to MongoDB
+} catch (err) {
+  console.error("❌ Failed to connect to MongoDB:", err.message);
+  console.error("   Make sure MongoDB is running and MONGO_URI is correct in .env file");
+  process.exit(1);
+}
 
 const app = express();
 app.use(cors());
@@ -39,5 +46,20 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`Server listening on ${PORT}`));
+
+// Start server
+const server = app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Server listening on http://localhost:${PORT}`);
+  console.log(`✅ Server also accessible on http://127.0.0.1:${PORT}`);
+});
+
+// Handle server errors
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`❌ Port ${PORT} is already in use. Try a different port.`);
+  } else {
+    console.error("❌ Server error:", err);
+  }
+  process.exit(1);
+});
  
