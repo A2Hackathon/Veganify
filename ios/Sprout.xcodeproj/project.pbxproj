@@ -100,7 +100,7 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A1000037 /* Sprout */ = {
+		A1000047 /* Sprout */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A1000038 /* Build configuration list for PBXNativeTarget "Sprout" */;
 			buildPhases = (
@@ -127,7 +127,7 @@
 				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
-					A1000037 = {
+					A1000047 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -145,7 +145,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A1000037 /* Sprout */,
+				A1000047 /* Sprout */,
 			);
 		};
 /* End PBXProject section */
@@ -155,7 +155,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1000031 /* Assets.xcassets in Resources */,
+				A1000036 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -180,7 +180,7 @@
 				A1000023 /* ImagePicker.swift in Sources */,
 				A1000025 /* SproutLogo.swift in Sources */,
 				A1000027 /* OnboardingView.swift in Sources */,
-				A1000029 /* APIClient.swift in Sources */,
+				A1000034 /* APIClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
