@@ -3,70 +3,48 @@ const router = express.Router();
 const multer = require('multer');
 const Tesseract = require('tesseract.js');
 
-const menuParser = require('../utils/menuParser');
-const Ingredient = require('../models/Ingredient');
 const User = require('../models/User');
-const {rewriteRecipeSteps,
-    extractIngredients,
-    isAllowedForUser} = require('../utils/llmClient');
+const { isAllowedForUser } = require('../utils/llmClient');
 
-const upload = multer({ dest: 'uploads/' }); // temp folder for uploaded images
-
+const upload = multer({ dest: 'uploads/' });
 
 router.post('/', upload.single('image'), async (req, res) => {
     try {
-        const { userID, menuText, dietLevel, extraForbiddenTags = [] } = req.body;
+        const { userID } = req.body;
 
-        let textToParse = menuText;
-
-        // OCR
-        if (req.file) {
-            const imagePath = req.file.path;
-            try {
-                const ocrResult = await Tesseract.recognize(imagePath, 'eng');
-                textToParse = ocrResult.data.text;
-            } catch (ocrErr) {
-                console.error('OCR failed:', ocrErr);
-                return res.status(500).json({ success: false, error: "OCR failed" });
-            } 
-        }
-
-        if (!textToParse) {
-            return res.status(400).json({ success: false, error: "No menu text found" });
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: "Image is required" });
         }
 
         // Load user preferences
-        let userPrefs = { dietLevel, extraForbiddenTags };
         const user = await User.findById(userID);
-        
-        userPrefs = {
-                    dietLevel: user.dietLevel,
-                    extraForbiddenTags: user.extraForbiddenTags || [],
-                };
-            
-        
+        if (!user) return res.status(404).json({ success: false, error: "User not found" });
 
-        // Parse menu text into dishes + ingredients
-        const parsedMenu = menuParser(textToParse);
-        const ingredientDetails = [];
+        const userPrefs = {
+            dietLevel: user.dietLevel,
+            extraForbiddenTags: user.extraForbiddenTags || []
+        };
 
-        for (const item of parsedMenu) {
+        // OCR
+        const ocrResult = await Tesseract.recognize(req.file.path, 'eng');
+        let lines = ocrResult.data.lines.map(l => l.text.trim());
 
-            for (const ingredient of item.ingredients) {
+        // Clean each line
+        lines = lines
+            .map(line => line.replace(/[^a-zA-Z ]/g, "").trim())
+            .filter(line => line.length > 0);
 
-                const check = isAllowedForUser(userPrefs, tags);
+        // Check each line as a possible ingredient 
+        const results = [];
 
-                ingredientDetails.push({
-                    ingredient: ingredient,
-                    allowed: check.allowed,
-                    reasons: check.reasons,
-                });
-            }
+        for (const line of lines) {
+
+            const check = await isAllowedForUser(userPrefs, [line]);
 
             results.push({
-                item: item.name,
-                ingredients: ingredientDetails,
-                compatible: ingredientDetails.every(i => i.allowed)
+                ingredient: line,
+                allowed: check.allowed,
+                reasons: check.reasons
             });
         }
 
