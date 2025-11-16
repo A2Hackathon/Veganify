@@ -15,14 +15,26 @@ const router = express.Router();
 router.post("/generate", async (req, res) => {
   try {
     const { userId, ingredients, prompt } = req.body;
-    if (!userId || !Array.isArray(ingredients)) {
-      return res.status(400).json({ error: "userId and ingredients required" });
+    if (!userId) {
+      return res.status(400).json({ error: "userId required" });
     }
 
     const user = await User.findById(userId).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const generated = await generateRecipes(ingredients, 3);
+    // If ingredients not provided, fetch from grocery list
+    let ingredientsList = ingredients;
+    if (!Array.isArray(ingredientsList) || ingredientsList.length === 0) {
+      const GroceryItem = (await import("../models/GroceryItem.js")).default;
+      const groceryItems = await GroceryItem.find({ userId }).lean();
+      ingredientsList = groceryItems.map(item => item.name);
+    }
+
+    if (ingredientsList.length === 0) {
+      return res.status(400).json({ error: "No ingredients available. Please add items to your grocery list or provide ingredients." });
+    }
+
+    const generated = await generateRecipes(ingredientsList, 3);
 
     const saved = [];
     for (const r of generated) {

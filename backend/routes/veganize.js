@@ -15,15 +15,17 @@ function mapStatus(s) {
 // POST /veganize/analyze
 router.post("/analyze", async (req, res) => {
   try {
-    const { userId, recipeText } = req.body;
-    if (!userId || !recipeText) {
-      return res.status(400).json({ error: "userId and recipeText required" });
+    const { userId, userID, recipeText, recipe } = req.body;
+    const actualUserId = userId || userID; // Support both userId and userID
+    const recipeContent = recipeText || recipe; // Support both parameter names
+    if (!actualUserId || !recipeContent) {
+      return res.status(400).json({ error: "userId/userID and recipeText/recipe required" });
     }
 
-    const user = await User.findById(userId).lean();
+    const user = await User.findById(actualUserId).lean();
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const ingredients = await extractIngredients(recipeText);
+    const ingredients = await extractIngredients(recipeContent);
 
     const prefs = {
       dietLevel: user.dietLevel || "vegan",
@@ -54,17 +56,25 @@ router.post("/analyze", async (req, res) => {
 // POST /veganize/commit
 router.post("/commit", async (req, res) => {
   try {
-    const { userId, recipeText, substitutions, originalPrompt } = req.body;
-    if (!userId || !recipeText || !Array.isArray(substitutions)) {
+    const { userId, userID, recipeText, recipe, substitutions, chosenSubs, originalPrompt } = req.body;
+    const actualUserId = userId || userID; // Support both userId and userID
+    const recipeContent = recipeText || recipe?.text || recipe; // Support recipeText, recipe.text, or recipe
+    const subs = substitutions || chosenSubs; // Support both parameter names
+    
+    if (!recipeContent || !Array.isArray(subs)) {
       return res
         .status(400)
-        .json({ error: "userId, recipeText and substitutions required" });
+        .json({ error: "recipeText/recipe and substitutions/chosenSubs required" });
     }
 
-    const user = await User.findById(userId).lean();
-    if (!user) return res.status(404).json({ error: "User not found" });
+    // userId is optional in commit route, but preferred if provided
+    let user = null;
+    if (actualUserId) {
+      user = await User.findById(actualUserId).lean();
+      if (!user) return res.status(404).json({ error: "User not found" });
+    }
 
-    const rewritten = await rewriteRecipeSteps(substitutions, recipeText);
+    const rewritten = await rewriteRecipeSteps(subs, recipeContent);
 
     // simple split of steps by line
     const steps = rewritten
@@ -73,14 +83,14 @@ router.post("/commit", async (req, res) => {
       .filter(Boolean);
 
     const substitutionMap = {};
-    substitutions.forEach((s) => {
+    subs.forEach((s) => {
       if (s.original && s.substitute) {
         substitutionMap[s.original] = s.substitute;
       }
     });
 
     const recipe = await Recipe.create({
-      userId,
+      userId: actualUserId || null,
       title: "Veganized Recipe",
       tags: ["veganized"],
       duration: "",

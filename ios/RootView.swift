@@ -25,7 +25,7 @@ struct RootView: View {
                     
                     // Only show Scan tab if we have a userId.
                     // The 'else { EmptyView() }' resolves the generic inference issue.
-                    if let userId = vm.userProfile?._id {
+                    if let userId = vm.userProfile?.id {
                         ScanView(userId: userId)
                             .tabItem {
                                 Image(systemName: "camera.viewfinder")
