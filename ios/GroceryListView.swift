@@ -9,6 +9,18 @@ struct GroceryListView: View {
     @State private var newItemName: String = ""
     @State private var selectedCategory: GroceryCategory = .produce
     
+    private var trimmedItemName: String {
+        newItemName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private var isItemNameEmpty: Bool {
+        trimmedItemName.isEmpty
+    }
+    
+    func itemsForCategory(_ category: GroceryCategory) -> [GroceryItem] {
+        vm.groceryItems.filter { $0.category == category.rawValue }
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -41,18 +53,19 @@ struct GroceryListView: View {
                             }
                             
                             Button {
-                                if !newItemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    Task {
-                                        await vm.addGroceryItem(name: newItemName, category: selectedCategory.rawValue)
-                                    }
+                                if !isItemNameEmpty {
+                                    let itemName = newItemName
                                     newItemName = ""
+                                    Task {
+                                        await vm.addGroceryItem(name: itemName, category: selectedCategory.rawValue)
+                                    }
                                 }
                             } label: {
                                 Image(systemName: "plus.circle.fill")
                                     .font(.title2)
                                     .foregroundColor(.sproutGreen)
                             }
-                            .disabled(newItemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .disabled(isItemNameEmpty)
                         }
                         
                         // Quick scan button
@@ -86,32 +99,8 @@ struct GroceryListView: View {
                     List {
                         ForEach(GroceryCategory.allCases) { category in
                             Section {
-                                ForEach(vm.groceryItems.filter { $0.category == category }) { item in
-                                    HStack(spacing: 16) {
-                                        Button {
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                                vm.toggleGroceryItem(item)
-                                            }
-                                        } label: {
-                                            ZStack {
-                                                Circle()
-                                                    .fill(item.isChecked ? Color.sproutGreen.opacity(0.2) : Color(.secondarySystemBackground))
-                                                    .frame(width: 32, height: 32)
-                                                
-                                                Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
-                                                    .font(.system(size: 20))
-                                                    .foregroundColor(item.isChecked ? .sproutGreen : .secondary)
-                                            }
-                                        }
-                                        
-                                        Text(item.name)
-                                            .font(.system(size: 16, design: .rounded))
-                                            .strikethrough(item.isChecked)
-                                            .foregroundColor(item.isChecked ? .secondary : .primary)
-                                        
-                                        Spacer()
-                                    }
-                                    .padding(.vertical, 4)
+                                ForEach(itemsForCategory(category)) { item in
+                                    GroceryItemRow(item: item, vm: vm)
                                 }
                             } header: {
                                 Text(category.rawValue)
@@ -140,6 +129,57 @@ struct GroceryListView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Grocery Item Row
+
+struct GroceryItemRow: View {
+    let item: GroceryItem
+    @ObservedObject var vm: SproutViewModel
+    
+    private var circleFillColor: Color {
+        item.isChecked ? Color.sproutGreen.opacity(0.2) : Color(.secondarySystemBackground)
+    }
+    
+    private var checkmarkIcon: String {
+        item.isChecked ? "checkmark.circle.fill" : "circle"
+    }
+    
+    private var checkmarkColor: Color {
+        item.isChecked ? .sproutGreen : .secondary
+    }
+    
+    private var textColor: Color {
+        item.isChecked ? .secondary : .primary
+    }
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    vm.toggleGroceryItem(item)
+                }
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(circleFillColor)
+                        .frame(width: 32, height: 32)
+                    
+                    Image(systemName: checkmarkIcon)
+                        .font(.system(size: 20))
+                        .foregroundColor(checkmarkColor)
+                }
+            }
+            
+            Text(item.name)
+                .font(.system(size: 16, design: .rounded))
+                .strikethrough(item.isChecked)
+                .foregroundColor(textColor)
+            
+            Spacer()
+        }
+        .padding(.vertical, 4)
     }
 }
 
