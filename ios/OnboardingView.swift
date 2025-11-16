@@ -62,7 +62,6 @@ struct OnboardingView: View {
                         .tag(6)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .disabled(true) // Prevent swipe
             }
         }
     }
@@ -138,18 +137,6 @@ struct WelcomeStep: View {
                         )
                         .cornerRadius(16)
                         .shadow(color: Color.sproutGreen.opacity(0.3), radius: 8, x: 0, y: 4)
-                }
-                
-                Button {
-                    // TODO: Implement login
-                } label: {
-                    Text("Log In")
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
-                        .foregroundColor(.sproutGreen)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.sproutGreen.opacity(0.1))
-                        .cornerRadius(16)
                 }
             }
             .padding(.horizontal, 32)
