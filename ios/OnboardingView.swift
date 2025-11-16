@@ -650,6 +650,7 @@ struct CookingStyleCard: View {
 struct ReviewStep: View {
     @ObservedObject var viewModel: OnboardingViewModel
     @Binding var currentStep: Int
+    @EnvironmentObject var sproutViewModel: SproutViewModel
     
     var body: some View {
         ScrollView {
