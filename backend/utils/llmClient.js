@@ -4,6 +4,45 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 //
 // Extract ingredients
 //
+
+
+/**
+ * Generates answers using AI with database context, but allows general knowledge
+ * @param {Object} userContext - groceries, allIngredients, dietary info, impact
+ * @param {string} userQuestion - question from user
+ * @returns {string} AI answer
+ */
+async function answerWithContext(userContext, userQuestion) {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `
+You are an assistant with access to a user's data and general knowledge.
+
+CONTEXT:
+${JSON.stringify(userContext, null, 2)}
+
+USER QUESTION:
+"${userQuestion}"
+
+INSTRUCTIONS:
+- Use the context to answer whenever relevant.
+- You may provide additional general knowledge if needed.
+- Prefer answers based on database context for personalization.
+- If the question relates to ingredients, groceries, or dietary restrictions, prioritize database info.
+
+Return the answer clearly and concisely.
+`;
+
+    try {
+        const result = await model.generateContent(prompt);
+        return result.response.text();
+    } catch (err) {
+        console.error("AI answerWithContext error:", err);
+        return "Sorry, I could not generate an answer at this time.";
+    }
+};
+
+
 async function extractIngredients(recipeText) {
     const prompt = `
 Extract ALL ingredients from the recipe below.
@@ -86,7 +125,7 @@ async function isAllowedForUser(userPrefs, ingredientTags) {
         Decide if it is allowed (true/false) and explain why if not allowed.
         Return JSON array:
         [
-        { "ingredient": "name", "allowed": Allowed/NotAllowed/Ambiguous, "reason": "..." }
+        { "ingredient": "name", "allowed": 'Allowed" or "NotAllowed" or "Ambiguous", "reason": "..." }
         ]
 `;
 
@@ -96,12 +135,13 @@ async function isAllowedForUser(userPrefs, ingredientTags) {
         return JSON.parse(raw);
     } catch (err) {
         console.error("❌ Failed to check diet:", err, "\nRaw:", err?.response || "");
-        return ingredientTags.map(tag => ({ ingredient: tag, allowed: true, reason: "" }));
+        return ingredientTags.map(tag => ({ ingredient: tag, allowed: "Allowed", reason: "" }));
     }
 }
 
 module.exports = {
     extractIngredients,
     rewriteRecipeSteps,
-    isAllowedForUser
+    isAllowedForUser,
+    answerWithContext
 };
