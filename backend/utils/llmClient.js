@@ -3,6 +3,8 @@ import OpenAI from "openai";
 const client = new OpenAI({
   apiKey: "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",
   baseURL: "https://openrouter.ai/api/v1",
+  timeout: 60000, // 60 seconds timeout for API requests
+  maxRetries: 2, // Retry failed requests up to 2 times
 });
 
 // Gemini model from OpenRouter

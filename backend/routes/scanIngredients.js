@@ -46,8 +46,58 @@ router.post("/", upload.single("image"), async (req, res) => {
     }
 
     console.log("🔍 Starting OCR processing...");
-    // OCR processing
-    const result = await Tesseract.recognize(req.file.path, "eng");
+    // OCR processing with error handling and timeout
+    let result;
+    try {
+      // Add timeout wrapper to prevent hanging
+      let timeoutId;
+      const ocrPromise = Tesseract.recognize(req.file.path, "eng", {
+        logger: (m) => {
+          if (m.status === "recognizing text") {
+            console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
+          } else if (m.status === "loading tesseract core") {
+            console.log("Loading Tesseract core...");
+          } else if (m.status === "initializing tesseract") {
+            console.log("Initializing Tesseract...");
+          }
+        }
+      });
+      
+      // Add 60 second timeout for OCR processing
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("OCR processing timeout after 60 seconds")), 60000);
+      });
+      
+      try {
+        result = await Promise.race([ocrPromise, timeoutPromise]);
+      } finally {
+        // Clean up timeout if OCR completes before timeout
+        if (timeoutId) clearTimeout(timeoutId);
+      }
+    } catch (ocrError) {
+      console.error("❌ Tesseract OCR error:", ocrError);
+      console.error("OCR Error details:", {
+        name: ocrError?.name,
+        message: ocrError?.message,
+        code: ocrError?.code,
+        errno: ocrError?.errno,
+        stack: ocrError?.stack
+      });
+      
+      // Check for specific connection errors
+      if (ocrError?.message?.includes("connection") || 
+          ocrError?.message?.includes("ECONNREFUSED") ||
+          ocrError?.code === "ECONNREFUSED") {
+        console.error("⚠️ Connection error - Tesseract worker may have failed to start");
+        console.error("💡 This could be due to:");
+        console.error("   - Port conflicts");
+        console.error("   - Insufficient system resources");
+        console.error("   - Tesseract.js worker process failure");
+        throw new Error("OCR worker connection failed. Please try again or restart the server.");
+      }
+      
+      throw new Error(`OCR processing failed: ${ocrError?.message || "Unknown error"}`);
+    }
     const text = result.data.text || "";
     console.log(`📝 OCR extracted text (${text.length} chars): ${text.substring(0, 200)}...`);
 
@@ -84,8 +134,19 @@ router.post("/", upload.single("image"), async (req, res) => {
     };
 
     console.log(`🔍 Checking ingredients against diet: ${prefs.dietLevel}`);
-    const checks = await isAllowedForUser(prefs, ingredients);
-    console.log(`✅ Got ${checks.length} check results`);
+    let checks;
+    try {
+      checks = await isAllowedForUser(prefs, ingredients);
+      console.log(`✅ Got ${checks.length} check results`);
+    } catch (llmError) {
+      console.error("❌ LLM API error:", llmError);
+      console.error("LLM Error details:", {
+        name: llmError?.name,
+        message: llmError?.message,
+        stack: llmError?.stack
+      });
+      throw new Error(`Ingredient analysis failed: ${llmError?.message || "Unknown error"}`);
+    }
 
     const formatted = checks.map((item) => ({
       name: item.ingredient || "",
@@ -107,10 +168,19 @@ router.post("/", upload.single("image"), async (req, res) => {
     console.error("❌ OCR ingredient scan error:", err);
     console.error("Error name:", err.name);
     console.error("Error message:", err.message);
+    console.error("Error code:", err.code);
     console.error("Error stack:", err.stack);
+    
+    // Check for connection-related errors
+    if (err.message && err.message.includes("connection")) {
+      console.error("⚠️ Connection error detected - this might be a Tesseract worker issue");
+      console.error("💡 Try: Restart the server or check if port conflicts exist");
+    }
+    
     res.status(500).json({ 
       error: "Failed to scan ingredients",
-      message: err.message 
+      message: err.message,
+      details: process.env.NODE_ENV === "development" ? err.stack : undefined
     });
   }
 });
