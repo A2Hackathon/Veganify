@@ -43,7 +43,7 @@
 		1A00001A /* SproutLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SproutLogo.swift; sourceTree = "<group>"; };
 		1A00001C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		1A00001E /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
-		1A000020 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/APIService.swift; sourceTree = "<group>"; };
+		1A000020 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 		1A000022 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1A000024 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
