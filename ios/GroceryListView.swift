@@ -53,25 +53,8 @@ struct GroceryListView: View {
                             .disabled(newItemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
                         
-                        // Quick scan buttons
+                        // Quick scan button
                         HStack(spacing: 12) {
-                            Button {
-                                // Scan Fridge action placeholder
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "camera.viewfinder")
-                                        .font(.caption)
-                                    Text("Scan Fridge")
-                                        .font(.caption)
-                                        .fontWeight(.semibold)
-                                }
-                                .foregroundColor(.sproutGreen)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(Color.sproutGreen.opacity(0.1))
-                                .cornerRadius(12)
-                            }
-                            
                             Button {
                                 // Scan Receipt action placeholder
                             } label: {

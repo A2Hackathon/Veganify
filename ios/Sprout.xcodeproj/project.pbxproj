@@ -19,6 +19,10 @@
 		A1000019 /* SavedRecipesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000020 /* SavedRecipesView.swift */; };
 		A1000021 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000022 /* SettingsView.swift */; };
 		A1000023 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000024 /* ImagePicker.swift */; };
+		A1000025 /* SproutLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000026 /* SproutLogo.swift */; };
+		A1000027 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000028 /* OnboardingView.swift */; };
+		A1000034 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000035 /* APIClient.swift */; };
+		A1000036 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000037 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,7 +39,11 @@
 		A1000020 /* SavedRecipesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedRecipesView.swift; sourceTree = "<group>"; };
 		A1000022 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A1000024 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
-		A1000030 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1000026 /* SproutLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SproutLogo.swift; sourceTree = "<group>"; };
+		A1000028 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		A1000035 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		A1000037 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1000033 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,7 +88,11 @@
 				A1000020 /* SavedRecipesView.swift */,
 				A1000022 /* SettingsView.swift */,
 				A1000024 /* ImagePicker.swift */,
-				A1000030 /* Info.plist */,
+				A1000026 /* SproutLogo.swift */,
+				A1000028 /* OnboardingView.swift */,
+				A1000035 /* APIClient.swift */,
+				A1000037 /* Assets.xcassets */,
+				A1000033 /* Info.plist */,
 			);
 			path = .;
 			sourceTree = "<group>";
@@ -88,7 +100,7 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A1000037 /* Sprout */ = {
+		A1000047 /* Sprout */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A1000038 /* Build configuration list for PBXNativeTarget "Sprout" */;
 			buildPhases = (
@@ -115,7 +127,7 @@
 				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
-					A1000037 = {
+					A1000047 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -133,7 +145,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A1000037 /* Sprout */,
+				A1000047 /* Sprout */,
 			);
 		};
 /* End PBXProject section */
@@ -143,6 +155,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1000036 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -165,6 +178,9 @@
 				A1000019 /* SavedRecipesView.swift in Sources */,
 				A1000021 /* SettingsView.swift in Sources */,
 				A1000023 /* ImagePicker.swift in Sources */,
+				A1000025 /* SproutLogo.swift in Sources */,
+				A1000027 /* OnboardingView.swift in Sources */,
+				A1000034 /* APIClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -299,6 +315,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to scan ingredient lists and menus.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need photo library access to upload images for scanning.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -329,6 +346,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need camera access to scan ingredient lists and menus.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need photo library access to upload images for scanning.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

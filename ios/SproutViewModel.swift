@@ -1,58 +1,196 @@
 import SwiftUI
 
-// MARK: - ViewModel
-
+@MainActor
 class SproutViewModel: ObservableObject {
-    @Published var userName: String = "Ellie"
-    @Published var sproutName: String = "Bud"
-    @Published var sproutLevel: Int = 6
-    @Published var xp: Int = 246
-    @Published var xpToNextLevel: Int = 300
-    @Published var coins: Int = 245
-    @Published var streakDays: Int = 4
+    @Published var userProfile: UserProfile?
+    @Published var isLoading = false
+    @Published var errorMessage: String?
     
-    @Published var missions: [Mission] = [
-        Mission(title: "Scan 1 new item", xpReward: 25, coinReward: 10, isCompleted: false),
-        Mission(title: "Cook 1 recipe", xpReward: 50, coinReward: 20, isCompleted: false),
-        Mission(title: "Update grocery list", xpReward: 10, coinReward: 5, isCompleted: true),
-        Mission(title: "Try a new cuisine-style recipe", xpReward: 20, coinReward: 10, isCompleted: false)
-    ]
+    // Home data
+    @Published var missions: [Mission] = []
     
-    @Published var chatMessages: [ChatMessage] = [
-        ChatMessage(isUser: false, text: "Hi Ellie! What should we cook today?")
-    ]
+    // Chat data
+    @Published var chatMessages: [ChatMessage] = []
     
-    @Published var groceryItems: [GroceryItem] = [
-        GroceryItem(name: "Tofu", category: .proteins, isChecked: false),
-        GroceryItem(name: "Rice", category: .grains, isChecked: false),
-        GroceryItem(name: "Spinach", category: .produce, isChecked: false)
-    ]
+    // Grocery list
+    @Published var groceryItems: [GroceryItem] = []
     
-    @Published var savedRecipes: [SavedRecipe] = [
-        SavedRecipe(title: "Spicy Tofu Rice Bowl", tags: ["Quick", "Korean", "High-protein"], duration: "15 min", imageName: "recipePlaceholder"),
-        SavedRecipe(title: "Creamy Vegan Carbonara", tags: ["Comfort", "Italian"], duration: "20 min", imageName: "recipePlaceholder")
-    ]
+    // Saved recipes
+    @Published var savedRecipes: [Recipe] = []
     
-    func completeMission(_ mission: Mission) {
-        guard let idx = missions.firstIndex(where: { $0.id == mission.id }) else { return }
-        missions[idx].isCompleted = true
-        xp += mission.xpReward
-        coins += mission.coinReward
-        if xp >= xpToNextLevel {
-            sproutLevel += 1
-            xp = xp - xpToNextLevel
-            xpToNextLevel += 100 // simple progression
+    // Scan data
+    @Published var scannedIngredients: [IngredientClassification] = []
+    @Published var scannedMenu: [MenuDish] = []
+        
+    private let apiClient = APIClient.shared
+    
+    init() {
+        // Initialize with welcome message
+        chatMessages = [
+            ChatMessage(isUser: false, text: "Hi! What should we cook today?")
+        ]
+    }
+    
+    // MARK: - Profile Management
+    
+    func loadProfile() async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            userProfile = try await apiClient.getProfile()
+            await loadHomeData()
+        } catch {
+            errorMessage = "Failed to load profile: \(error.localizedDescription)"
         }
     }
+    
+    func updateProfile(_ profile: UserProfile) async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            userProfile = try await apiClient.updateProfile(profile)
+        } catch {
+            errorMessage = "Failed to update profile: \(error.localizedDescription)"
+        }
+    }
+    
+    // MARK: - Home Data
+    
+    func loadHomeData() async {
+        do {
+            let summary = try await apiClient.getHomeSummary()
+            await MainActor.run {
+                if let profile = userProfile {
+                    userProfile = UserProfile(
+                        id: profile.id,
+                        userName: profile.userName,
+                        eatingStyle: profile.eatingStyle,
+                        dietaryRestrictions: profile.dietaryRestrictions,
+                        cuisinePreferences: profile.cuisinePreferences,
+                        cookingStylePreferences: profile.cookingStylePreferences,
+                        sproutName: profile.sproutName,
+                        level: summary.level,
+                        xp: summary.xp,
+                        xpToNextLevel: summary.xpToNextLevel,
+                        coins: summary.coins,
+                        streakDays: summary.streakDays
+                    )
+                }
+                missions = summary.missions
+            }
+        } catch {
+            errorMessage = "Failed to load home data: \(error.localizedDescription)"
+        }
+    }
+    
+    func completeMission(_ mission: Mission) async {
+        guard let userId = userProfile?.id else { return }
+        
+        do {
+            let updatedProfile = try await apiClient.completeMission(userId: userId, missionId: mission.id)
+            userProfile = updatedProfile
+            
+            // Update mission status locally
+            if let index = missions.firstIndex(where: { $0.id == mission.id }) {
+                missions[index].isCompleted = true
+            }
+            
+            // Reload home data to get updated missions
+            await loadHomeData()
+        } catch {
+            errorMessage = "Failed to complete mission: \(error.localizedDescription)"
+        }
+    }
+    
+    // MARK: - Chat & Recipes
     
     func addUserChat(_ text: String) {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         chatMessages.append(ChatMessage(isUser: true, text: text))
-        // placeholder AI reply
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            self.chatMessages.append(
-                ChatMessage(isUser: false, text: "Got it! I'll come up with a recipe based on your preferences and grocery list.")
-            )
+    }
+    
+    func generateRecipe() async {
+        guard let userId = userProfile?.id else { return }
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let recipe = try await apiClient.generateRecipe(userId: userId)
+            let message = ChatMessage(isUser: false, text: "Here's a recipe for you!", recipe: recipe)
+            chatMessages.append(message)
+        } catch {
+            errorMessage = "Failed to generate recipe: \(error.localizedDescription)"
+            chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't generate a recipe right now. Please try again."))
+        }
+    }
+    
+    func veganizeRecipe(inputText: String) async {
+        guard let userId = userProfile?.id else { return }
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let recipe = try await apiClient.veganizeRecipe(userId: userId, inputText: inputText)
+            let message = ChatMessage(isUser: false, text: "Here's your veganized recipe!", recipe: recipe)
+            chatMessages.append(message)
+        } catch {
+            errorMessage = "Failed to veganize recipe: \(error.localizedDescription)"
+            chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't veganize that recipe. Please try again."))
+        }
+    }
+    
+    func saveRecipe(_ recipe: Recipe) async {
+        guard let userId = userProfile?.id else { return }
+        do {
+            let saved = try await apiClient.saveRecipe(userId: userId, recipe: recipe)
+            if !savedRecipes.contains(where: { $0.id == saved.id }) {
+                savedRecipes.append(saved)
+            }
+        } catch {
+            errorMessage = "Failed to save recipe: \(error.localizedDescription)"
+        }
+    }
+    
+    func loadSavedRecipes() async {
+        guard let userId = userProfile?.id else { return }
+        do {
+            savedRecipes = try await apiClient.getSavedRecipes(userId: userId)
+        } catch {
+            errorMessage = "Failed to load saved recipes: \(error.localizedDescription)"
+        }
+    }
+    
+    // MARK: - Grocery List
+    
+    func loadGroceryList() async {
+        guard let userId = userProfile?.id else { return }
+        do {
+            groceryItems = try await apiClient.getGroceryList(userId: userId)
+        } catch {
+            errorMessage = "Failed to load grocery list: \(error.localizedDescription)"
+        }
+    }
+    
+    func addGroceryItem(name: String, category: String) async {
+        guard let userId = userProfile?.id else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        let item = GroceryItem(
+            id: UUID().uuidString,
+            name: trimmed,
+            category: category,
+            isChecked: false,
+            userId: userId
+        )
+        
+        do {
+            let added = try await apiClient.addGroceryItem(userId: userId, item: item)
+            groceryItems.append(added)
+        } catch {
+            errorMessage = "Failed to add item: \(error.localizedDescription)"
         }
     }
     
@@ -61,16 +199,112 @@ class SproutViewModel: ObservableObject {
         groceryItems[idx].isChecked.toggle()
     }
     
-    func addGroceryItem(name: String, category: GroceryCategory) {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        groceryItems.append(GroceryItem(name: trimmed, category: category, isChecked: false))
+    func scanFridge(image: UIImage) async {
+        guard let userId = userProfile?.id else { return }
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let items = try await apiClient.scanFridge(image: image, userId: userId)
+            groceryItems.append(contentsOf: items)
+        } catch {
+            errorMessage = "Failed to scan fridge: \(error.localizedDescription)"
+        }
+    }
+    
+    func scanReceipt(image: UIImage) async {
+        guard let userId = userProfile?.id else { return }
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let items = try await apiClient.scanReceipt(image: image, userId: userId)
+            groceryItems.append(contentsOf: items)
+        } catch {
+            errorMessage = "Failed to scan receipt: \(error.localizedDescription)"
+        }
+    }
+    
+    
+    func scanIngredients(imageData: Data) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            // Send image directly to backend
+            let response = try await APIService.shared.scanIngredients(imageData: imageData, userID: currentUserID)
+
+            // Map backend results into your local model
+            scannedIngredients = response.ingredients.map { item in
+                IngredientClassification(
+                    id: UUID().uuidString,
+                    name: item.name,          // or item.original depending on your backend response
+                    status: item.allowed == "Allowed" ? .allowed : .notAllowed,
+                    reason: item.reason ?? "Scanned from receipt"
+                )
+            }
+
+        } catch {
+            print("Error scanning ingredients:", error)
+            errorMessage = "Failed to scan ingredients: \(error.localizedDescription)"
+        }
+    }
+
+    
+    func scanMenu(image: UIImage) async {
+        guard let userId = userProfile?.id else { return }
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let response = try await apiClient.scanMenu(image: image, userId: userId)
+            scannedMenu = response.dishes
+        } catch {
+            errorMessage = "Failed to scan menu: \(error.localizedDescription)"
+        }
+    }
+    
+    func getAlternativeProduct(productType: String, context: String) async -> [String] {
+        do {
+            let response = try await APIService.shared.analyzeIngredient(
+                ingredient: productType,
+                context: context,
+                userID: currentUserID
+            )
+            return response.suggestions  // array of substitutions from backend
+        } catch {
+            print("Error fetching alternatives:", error)
+            return []
+        }
     }
 }
 
 extension SproutViewModel {
-    var xpToNextLabel: Int {
-        max(0, xpToNextLevel - xp)
+    var userName: String {
+        userProfile?.userName ?? "User"
+    }
+    
+    var sproutName: String {
+        userProfile?.sproutName ?? "Bud"
+    }
+    
+    var sproutLevel: Int {
+        userProfile?.level ?? 1
+    }
+    
+    var xp: Int {
+        userProfile?.xp ?? 0
+    }
+    
+    var xpToNextLevel: Int {
+        userProfile?.xpToNextLevel ?? 100
+    }
+    
+    var coins: Int {
+        userProfile?.coins ?? 0
+    }
+    
+    var streakDays: Int {
+        userProfile?.streakDays ?? 0
     }
 }
-
