@@ -7,49 +7,49 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1000001 /* SproutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002 /* SproutApp.swift */; };
-		A1000003 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000004 /* RootView.swift */; };
-		A1000005 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000006 /* Models.swift */; };
-		A1000007 /* SproutViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000008 /* SproutViewModel.swift */; };
-		A1000009 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000010 /* DesignSystem.swift */; };
-		A1000011 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000012 /* HomeView.swift */; };
-		A1000013 /* ScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000014 /* ScanView.swift */; };
-		A1000015 /* CookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000016 /* CookView.swift */; };
-		A1000017 /* GroceryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000018 /* GroceryListView.swift */; };
-		A1000019 /* SavedRecipesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000020 /* SavedRecipesView.swift */; };
-		A1000021 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000022 /* SettingsView.swift */; };
-		A1000023 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000024 /* ImagePicker.swift */; };
-		A1000025 /* SproutLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000026 /* SproutLogo.swift */; };
-		A1000027 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000028 /* OnboardingView.swift */; };
-		A1000034 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000035 /* APIClient.swift */; };
-		A1000036 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000037 /* Assets.xcassets */; };
-		A1000048 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000049 /* APIService.swift */; };
+		1A000001 /* SproutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000002 /* SproutApp.swift */; };
+		1A000003 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000004 /* RootView.swift */; };
+		1A000005 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000006 /* Models.swift */; };
+		1A000007 /* SproutViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000008 /* SproutViewModel.swift */; };
+		1A000009 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000A /* DesignSystem.swift */; };
+		1A00000B /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000C /* HomeView.swift */; };
+		1A00000D /* ScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00000E /* ScanView.swift */; };
+		1A00000F /* CookView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000010 /* CookView.swift */; };
+		1A000011 /* GroceryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000012 /* GroceryListView.swift */; };
+		1A000013 /* SavedRecipesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000014 /* SavedRecipesView.swift */; };
+		1A000015 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000016 /* SettingsView.swift */; };
+		1A000017 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000018 /* ImagePicker.swift */; };
+		1A000019 /* SproutLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00001A /* SproutLogo.swift */; };
+		1A00001B /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00001C /* OnboardingView.swift */; };
+		1A00001D /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00001E /* APIClient.swift */; };
+		1A00001F /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000020 /* APIService.swift */; };
+		1A000021 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A000022 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A1000029 /* Sprout.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Sprout.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A1000002 /* SproutApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SproutApp.swift; sourceTree = "<group>"; };
-		A1000004 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		A1000006 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		A1000008 /* SproutViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SproutViewModel.swift; sourceTree = "<group>"; };
-		A1000010 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
-		A1000012 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
-		A1000014 /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
-		A1000016 /* CookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookView.swift; sourceTree = "<group>"; };
-		A1000018 /* GroceryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroceryListView.swift; sourceTree = "<group>"; };
-		A1000020 /* SavedRecipesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedRecipesView.swift; sourceTree = "<group>"; };
-		A1000022 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		A1000024 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
-		A1000026 /* SproutLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SproutLogo.swift; sourceTree = "<group>"; };
-		A1000028 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
-		A1000035 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
-		A1000037 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		A1000033 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A1000049 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/APIService.swift; sourceTree = "<group>"; };
+		1A000023 /* Sprout.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Sprout.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A000002 /* SproutApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SproutApp.swift; sourceTree = "<group>"; };
+		1A000004 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		1A000006 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		1A000008 /* SproutViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SproutViewModel.swift; sourceTree = "<group>"; };
+		1A00000A /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		1A00000C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		1A00000E /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
+		1A000010 /* CookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CookView.swift; sourceTree = "<group>"; };
+		1A000012 /* GroceryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroceryListView.swift; sourceTree = "<group>"; };
+		1A000014 /* SavedRecipesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedRecipesView.swift; sourceTree = "<group>"; };
+		1A000016 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		1A000018 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
+		1A00001A /* SproutLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SproutLogo.swift; sourceTree = "<group>"; };
+		1A00001C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		1A00001E /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		1A000020 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Networking/APIService.swift; sourceTree = "<group>"; };
+		1A000022 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1A000024 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		A1000031 /* Frameworks */ = {
+		1A000025 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -59,57 +59,65 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		A1000032 = {
+		1A000026 = {
 			isa = PBXGroup;
 			children = (
-				A1000050 /* Sprout */,
-				A1000034 /* Products */,
+				1A000027 /* Sprout */,
+				1A000028 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		A1000034 /* Products */ = {
+		1A000028 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A1000029 /* Sprout.app */,
+				1A000023 /* Sprout.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A1000050 /* Sprout */ = {
+		1A000027 /* Sprout */ = {
 			isa = PBXGroup;
 			children = (
-				A1000002 /* SproutApp.swift */,
-				A1000004 /* RootView.swift */,
-				A1000006 /* Models.swift */,
-				A1000008 /* SproutViewModel.swift */,
-				A1000010 /* DesignSystem.swift */,
-				A1000012 /* HomeView.swift */,
-				A1000014 /* ScanView.swift */,
-				A1000016 /* CookView.swift */,
-				A1000018 /* GroceryListView.swift */,
-				A1000020 /* SavedRecipesView.swift */,
-				A1000022 /* SettingsView.swift */,
-				A1000024 /* ImagePicker.swift */,
-				A1000026 /* SproutLogo.swift */,
-				A1000028 /* OnboardingView.swift */,
-				A1000035 /* APIClient.swift */,
-				A1000049 /* APIService.swift */,
-				A1000037 /* Assets.xcassets */,
-				A1000033 /* Info.plist */,
+				1A000029 /* Networking */,
+				1A000002 /* SproutApp.swift */,
+				1A000004 /* RootView.swift */,
+				1A000006 /* Models.swift */,
+				1A000008 /* SproutViewModel.swift */,
+				1A00000A /* DesignSystem.swift */,
+				1A00000C /* HomeView.swift */,
+				1A00000E /* ScanView.swift */,
+				1A000010 /* CookView.swift */,
+				1A000012 /* GroceryListView.swift */,
+				1A000014 /* SavedRecipesView.swift */,
+				1A000016 /* SettingsView.swift */,
+				1A000018 /* ImagePicker.swift */,
+				1A00001A /* SproutLogo.swift */,
+				1A00001C /* OnboardingView.swift */,
+				1A00001E /* APIClient.swift */,
+				1A000022 /* Assets.xcassets */,
+				1A000024 /* Info.plist */,
 			);
 			path = .;
+			sourceTree = "<group>";
+		};
+		1A000029 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				1A000020 /* APIService.swift */,
+			);
+			path = Networking;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A1000047 /* Sprout */ = {
+		1A00002A /* Sprout */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A1000038 /* Build configuration list for PBXNativeTarget "Sprout" */;
+			buildConfigurationList = 1A00002B /* Build configuration list for PBXNativeTarget "Sprout" */;
 			buildPhases = (
-				A1000039 /* Sources */,
-				A1000031 /* Frameworks */,
-				A1000040 /* Resources */,
+				1A00002C /* Sources */,
+				1A000025 /* Frameworks */,
+				1A00002D /* Resources */,
 			);
 			buildRules = (
 			);
@@ -117,25 +125,25 @@
 			);
 			name = Sprout;
 			productName = Sprout;
-			productReference = A1000029 /* Sprout.app */;
+			productReference = 1A000023 /* Sprout.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		A1000041 /* Project object */ = {
+		1A00002E /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
-					A1000047 = {
+					1A00002A = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
 			};
-			buildConfigurationList = A1000042 /* Build configuration list for PBXProject "Sprout" */;
+			buildConfigurationList = 1A00002F /* Build configuration list for PBXProject "Sprout" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -143,55 +151,55 @@
 				en,
 				Base,
 			);
-			mainGroup = A1000032;
-			productRefGroup = A1000034 /* Products */;
+			mainGroup = 1A000026;
+			productRefGroup = 1A000028 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A1000047 /* Sprout */,
+				1A00002A /* Sprout */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		A1000040 /* Resources */ = {
+		1A00002D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1000036 /* Assets.xcassets in Resources */,
+				1A000021 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		A1000039 /* Sources */ = {
+		1A00002C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1000001 /* SproutApp.swift in Sources */,
-				A1000003 /* RootView.swift in Sources */,
-				A1000005 /* Models.swift in Sources */,
-				A1000007 /* SproutViewModel.swift in Sources */,
-				A1000009 /* DesignSystem.swift in Sources */,
-				A1000011 /* HomeView.swift in Sources */,
-				A1000013 /* ScanView.swift in Sources */,
-				A1000015 /* CookView.swift in Sources */,
-				A1000017 /* GroceryListView.swift in Sources */,
-				A1000019 /* SavedRecipesView.swift in Sources */,
-				A1000021 /* SettingsView.swift in Sources */,
-				A1000023 /* ImagePicker.swift in Sources */,
-				A1000025 /* SproutLogo.swift in Sources */,
-				A1000027 /* OnboardingView.swift in Sources */,
-				A1000034 /* APIClient.swift in Sources */,
-				A1000048 /* APIService.swift in Sources */,
+				1A000001 /* SproutApp.swift in Sources */,
+				1A000003 /* RootView.swift in Sources */,
+				1A000005 /* Models.swift in Sources */,
+				1A000007 /* SproutViewModel.swift in Sources */,
+				1A000009 /* DesignSystem.swift in Sources */,
+				1A00000B /* HomeView.swift in Sources */,
+				1A00000D /* ScanView.swift in Sources */,
+				1A00000F /* CookView.swift in Sources */,
+				1A000011 /* GroceryListView.swift in Sources */,
+				1A000013 /* SavedRecipesView.swift in Sources */,
+				1A000015 /* SettingsView.swift in Sources */,
+				1A000017 /* ImagePicker.swift in Sources */,
+				1A000019 /* SproutLogo.swift in Sources */,
+				1A00001B /* OnboardingView.swift in Sources */,
+				1A00001D /* APIClient.swift in Sources */,
+				1A00001F /* APIService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		A1000043 /* Debug */ = {
+		1A000030 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -254,7 +262,7 @@
 			};
 			name = Debug;
 		};
-		A1000044 /* Release */ = {
+		1A000031 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -310,7 +318,7 @@
 			};
 			name = Release;
 		};
-		A1000045 /* Debug */ = {
+		1A000032 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -341,7 +349,7 @@
 			};
 			name = Debug;
 		};
-		A1000046 /* Release */ = {
+		1A000033 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -375,26 +383,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A1000042 /* Build configuration list for PBXProject "Sprout" */ = {
+		1A00002F /* Build configuration list for PBXProject "Sprout" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A1000043 /* Debug */,
-				A1000044 /* Release */,
+				1A000030 /* Debug */,
+				1A000031 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A1000038 /* Build configuration list for PBXNativeTarget "Sprout" */ = {
+		1A00002B /* Build configuration list for PBXNativeTarget "Sprout" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A1000045 /* Debug */,
-				A1000046 /* Release */,
+				1A000032 /* Debug */,
+				1A000033 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = A1000041 /* Project object */;
+	rootObject = 1A00002E /* Project object */;
 }
-
