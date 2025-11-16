@@ -1,3 +1,4 @@
+import Foundation
 
 class APIService {
     static var shared = APIService()
@@ -19,7 +20,7 @@ class APIService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body = ["userID": userID, "recipe": ingredient]
-        request.httpBody = try JSONEncoder().encode(body)
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, _) = try await URLSession.shared.data(for: request)
         return try JSONDecoder().decode(AnalyzeResponse.self, from: data)
