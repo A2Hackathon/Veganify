@@ -30,7 +30,7 @@ enum EatingStyle: String, CaseIterable, Identifiable {
     }
 }
 
-struct UserProfile: Codable {
+struct UserProfile: Codable, Equatable {
     var id: String
     var userName: String
     var eatingStyle: String

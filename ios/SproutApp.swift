@@ -4,23 +4,19 @@ import SwiftUI
 struct SproutApp: App {
     @StateObject private var viewModel = SproutViewModel()
     @State private var hasCompletedOnboarding = false
-    @State private var userProfile: UserProfile?
     
     var body: some Scene {
         WindowGroup {
-            if !hasCompletedOnboarding || userProfile == nil {
-                OnboardingView(
-                    isComplete: $hasCompletedOnboarding,
-                    userProfile: $userProfile
-                )
-                .onChange(of: userProfile) { newProfile in
-                    if let profile = newProfile {
-                        viewModel.userProfile = profile
+            if !hasCompletedOnboarding {
+                OnboardingView()
+                    .onAppear {
                         Task {
-                            await viewModel.loadHomeData()
+                            await viewModel.loadProfile()
+                            if viewModel.userProfile != nil {
+                                hasCompletedOnboarding = true
+                            }
                         }
                     }
-                }
             } else {
                 RootView()
                     .environmentObject(viewModel)
