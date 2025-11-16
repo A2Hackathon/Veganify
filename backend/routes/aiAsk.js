@@ -14,8 +14,10 @@ router.post("/ask", async (req, res) => {
         return res.status(400).json({ error: "user_id and question required" });
 
     try {
+        console.log("🔍 Calling LLM (answerWithContext) for chatbot question...");
         const context = await getUserContext(user_id);
         const answer = await answerWithContext(context, question);
+        console.log("✅ LLM answered chatbot question");
 
         res.json({ answer });
     } catch (err) {

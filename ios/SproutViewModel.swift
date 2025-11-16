@@ -56,12 +56,16 @@ class SproutViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
+            print("📝 Updating profile with:", profile)
             let updated = try await apiClient.updateProfile(profile)
+            print("✅ Profile updated successfully:", updated)
             await MainActor.run {
                 userProfile = updated
+                // Force UI update
+                objectWillChange.send()
             }
         } catch {
-            print("Error updating profile: \(error)")
+            print("❌ Error updating profile: \(error)")
             errorMessage = "Failed to update profile: \(error.localizedDescription)"
         }
     }

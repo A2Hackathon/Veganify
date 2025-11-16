@@ -27,7 +27,9 @@ router.post('/analyze', async (req, res) => {
         const dietLevel = user.dietLevel?.toLowerCase();
         const extraForbiddenTags = user.extraForbiddenTags || [];
 
+        console.log("🔍 Calling LLM (extractIngredients) for veganize analyze...");
         const ingredients = await extractIngredients(recipe);
+        console.log("✅ LLM extracted", ingredients.length, "ingredients");
 
         const problems = []; 
 
@@ -79,7 +81,9 @@ router.post('/commit', async (req, res) => {
             substitute: item.substitute
         }));
 
+        console.log("🔍 Calling LLM (rewriteRecipeSteps) for veganize commit...");
         const newRecipe = await rewriteRecipeSteps(adaptedIngredients, recipe.text);
+        console.log("✅ LLM rewrote recipe successfully");
 
         res.json({
             success: true,

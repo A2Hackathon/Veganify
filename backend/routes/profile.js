@@ -59,6 +59,8 @@ router.patch("/", async (req, res) => {
   try {
     const { id, userName, eatingStyle, dietaryRestrictions, cuisinePreferences, cookingStylePreferences, sproutName } = req.body;
 
+    console.log("PATCH /profile - Received data:", { id, userName, eatingStyle, dietaryRestrictions, cuisinePreferences, cookingStylePreferences, sproutName });
+
     if (!id) {
       return res.status(400).json({ error: "id is required" });
     }
@@ -77,6 +79,14 @@ router.patch("/", async (req, res) => {
     if (sproutName !== undefined) user.sproutName = sproutName;
 
     await user.save();
+    console.log("PATCH /profile - User saved successfully:", {
+      name: user.name,
+      dietLevel: user.dietLevel,
+      extraForbiddenTags: user.extraForbiddenTags,
+      preferredCuisines: user.preferredCuisines,
+      cookingStylePreferences: user.cookingStylePreferences,
+      sproutName: user.sproutName
+    });
 
     // Get updated profile with impact data
     const impact = await UserImpact.findOne({ user_id: id }) || {

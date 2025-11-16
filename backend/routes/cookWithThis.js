@@ -31,7 +31,9 @@ const ingredients = groceries.map(g => g.name);
 
 
     // generate 3 recipes
+    console.log("🔍 Calling LLM (generateRecipes) for 'Cook With This' feature...");
     const recipes = await generateRecipes(ingredients, 3);
+    console.log("✅ LLM generated", recipes?.length || 0, "recipes");
 
     let progress = null;
 

@@ -36,8 +36,8 @@ router.post('/', upload.single('image'), async (req, res) => {
         // Check each line as a possible ingredient 
         const results = [];
 
+        console.log("🔍 Calling LLM (isAllowedForUser) for menu scan...");
         for (const line of lines) {
-
             const check = await isAllowedForUser(userPrefs, [line]);
             const first = check[0] || { allowed: "Ambiguous", reason: "" };
 
@@ -63,6 +63,7 @@ router.post('/', upload.single('image'), async (req, res) => {
             };
         });
         
+        console.log("✅ LLM analyzed", results.length, "menu items");
         res.json({ dishes: dishes });
 
     } catch (err) {

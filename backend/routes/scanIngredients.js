@@ -28,10 +28,12 @@ router.post('/', upload.single('image'), async (req, res) => {
             .filter(line => line.length > 0);
 
         // Call isAllowedForUser once on all ingredients
+        console.log("🔍 Calling LLM (isAllowedForUser) for ingredients scan...");
         const checkResults = await isAllowedForUser(
             { dietLevel: user.dietLevel, extraForbiddenTags: user.extraForbiddenTags || [] },
             ingredients
         );
+        console.log("✅ LLM returned results for", checkResults.length, "ingredients");
 
         // Format for iOS - map to expected format
         const formattedIngredients = checkResults.map(r => ({
@@ -68,10 +70,12 @@ router.post("/text", async (req, res) => {
         }
 
         // Call isAllowedForUser on all ingredients
+        console.log("🔍 Calling LLM (isAllowedForUser) for text ingredients analysis...");
         const checkResults = await isAllowedForUser(
             { dietLevel: user.dietLevel, extraForbiddenTags: user.extraForbiddenTags || [] },
             ingredients
         );
+        console.log("✅ LLM returned results for", checkResults.length, "ingredients");
 
         // Format for iOS - map to expected format
         const formattedIngredients = checkResults.map(r => ({

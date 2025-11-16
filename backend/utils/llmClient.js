@@ -56,7 +56,7 @@ ${recipeText}
 `;
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent(prompt);
         const text = result.response.text();
 
@@ -95,7 +95,7 @@ Return ONLY the rewritten recipe text.
 `;
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent(prompt);
         return result.response.text();
     } catch (err) {
@@ -146,7 +146,7 @@ async function isAllowedForUser(userPrefs, ingredientTags) {
  * @returns {Promise<Array>} Array of recipe objects
  */
 async function generateRecipes(ingredients, count = 3) {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     
     const prompt = `
 Generate ${count} vegan recipes using these ingredients: ${ingredients.join(', ')}.

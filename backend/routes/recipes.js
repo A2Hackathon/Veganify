@@ -27,7 +27,9 @@ router.post("/generate", async (req, res) => {
     const ingredients = groceries.map(g => g.name);
 
     // Generate recipes
+    console.log("🔍 Calling LLM (generateRecipes) for recipe generation...");
     const recipes = await generateRecipes(ingredients, 1);
+    console.log("✅ LLM generated", recipes?.length || 0, "recipes");
     
     if (!recipes || recipes.length === 0) {
       return res.status(500).json({ error: "Failed to generate recipe" });
@@ -75,7 +77,9 @@ router.post("/veganize", async (req, res) => {
     }
 
     // Extract ingredients
+    console.log("🔍 Calling LLM (extractIngredients) for recipe veganization...");
     const ingredients = await extractIngredients(inputText);
+    console.log("✅ LLM extracted", ingredients.length, "ingredients");
 
     // Get substitutions
     const substitutions = JSON.parse(readFileSync(join(__dirname, "../config/substitutions.json"), "utf-8"));
@@ -96,7 +100,9 @@ router.post("/veganize", async (req, res) => {
     }
 
     // Rewrite recipe
+    console.log("🔍 Calling LLM (rewriteRecipeSteps) to veganize recipe...");
     const newRecipe = await rewriteRecipeSteps(adaptedIngredients, inputText);
+    console.log("✅ LLM rewrote recipe successfully");
 
     // Save recipe
     const savedRecipe = await Recipe.create({

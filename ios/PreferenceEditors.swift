@@ -100,6 +100,11 @@ struct DietaryRestrictionsEditorView: View {
         .onAppear {
             selectedRestrictions = vm.userProfile?.dietaryRestrictions ?? []
         }
+        .onChange(of: vm.userProfile?.dietaryRestrictions) { newValue in
+            if let newValue = newValue {
+                selectedRestrictions = newValue
+            }
+        }
         .navigationTitle("Dietary Restrictions")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -141,8 +146,16 @@ struct DietaryRestrictionsEditorView: View {
             if var profile = vm.userProfile {
                 profile.dietaryRestrictions = selectedRestrictions
                 await vm.updateProfile(profile)
+                // Wait a bit to ensure profile is updated
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                await MainActor.run {
+                    dismiss()
+                }
+            } else {
+                await MainActor.run {
+                    dismiss()
+                }
             }
-            dismiss()
         }
     }
 }
@@ -205,6 +218,11 @@ struct CuisinePreferencesEditorView: View {
         .onAppear {
             selectedCuisines = vm.userProfile?.cuisinePreferences ?? []
         }
+        .onChange(of: vm.userProfile?.cuisinePreferences) { newValue in
+            if let newValue = newValue {
+                selectedCuisines = newValue
+            }
+        }
         .navigationTitle("Cuisine Preferences")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -214,8 +232,16 @@ struct CuisinePreferencesEditorView: View {
             if var profile = vm.userProfile {
                 profile.cuisinePreferences = selectedCuisines
                 await vm.updateProfile(profile)
+                // Wait a bit to ensure profile is updated
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                await MainActor.run {
+                    dismiss()
+                }
+            } else {
+                await MainActor.run {
+                    dismiss()
+                }
             }
-            dismiss()
         }
     }
 }
@@ -278,6 +304,11 @@ struct CookingStyleEditorView: View {
         .onAppear {
             selectedStyles = vm.userProfile?.cookingStylePreferences ?? []
         }
+        .onChange(of: vm.userProfile?.cookingStylePreferences) { newValue in
+            if let newValue = newValue {
+                selectedStyles = newValue
+            }
+        }
         .navigationTitle("Cooking Style")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -287,8 +318,16 @@ struct CookingStyleEditorView: View {
             if var profile = vm.userProfile {
                 profile.cookingStylePreferences = selectedStyles
                 await vm.updateProfile(profile)
+                // Wait a bit to ensure profile is updated
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                await MainActor.run {
+                    dismiss()
+                }
+            } else {
+                await MainActor.run {
+                    dismiss()
+                }
             }
-            dismiss()
         }
     }
 }
@@ -351,6 +390,12 @@ struct EatingStyleEditorView: View {
                 selectedStyle = style
             }
         }
+        .onChange(of: vm.userProfile?.eatingStyle) { newValue in
+            if let styleString = newValue,
+               let style = EatingStyle.allCases.first(where: { $0.rawValue == styleString }) {
+                selectedStyle = style
+            }
+        }
         .navigationTitle("Eating Style")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -361,8 +406,16 @@ struct EatingStyleEditorView: View {
             if var profile = vm.userProfile {
                 profile.eatingStyle = style.rawValue
                 await vm.updateProfile(profile)
+                // Wait a bit to ensure profile is updated
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                await MainActor.run {
+                    dismiss()
+                }
+            } else {
+                await MainActor.run {
+                    dismiss()
+                }
             }
-            dismiss()
         }
     }
 }
