@@ -11,8 +11,14 @@ const router = express.Router();
 router.get("/:userId", async (req, res, next) => {
   try {
     const { userId } = req.params;
+
+    // ensure user exists
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ error: "User not found" });
+
     const impact = await UserImpact.findOne({ user_id: userId }).lean();
     if (!impact) return res.json({ total_meals_logged: 0, xp: 0 });
+
     res.json(impact);
   } catch (err) {
     next(err);
@@ -23,16 +29,20 @@ router.get("/:userId", async (req, res, next) => {
  * POST /impact/update
  * body: { user_id }
  *
- * XP RULES (decided by Albert):
- * - +10 XP for each logged meal
- * - +20 XP bonus for each new day streak increment
+ * XP RULES:
+ *  - +10 XP per meal
+ *  - +20 XP per streak increase
  */
 router.post("/update", async (req, res, next) => {
   try {
     const { user_id } = req.body;
     if (!user_id) return res.status(400).json({ error: "user_id required" });
 
-    // find or create the user impact doc
+    // validate the user exists before updating impact
+    const user = await User.findById(user_id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // find or create the user's impact document
     let impact = await UserImpact.findOne({ user_id });
 
     if (!impact) {
@@ -52,35 +62,29 @@ router.post("/update", async (req, res, next) => {
     // streak logic
     let streakBonus = 0;
     if (!last) {
-      // first time ever logging → start streak
       impact.streak = 1;
       streakBonus = 20;
     } else {
       const diffDays = Math.floor((today - last) / (1000 * 60 * 60 * 24));
 
       if (diffDays === 1) {
-        // daily streak continues
         impact.streak += 1;
         streakBonus = 20;
       } else if (diffDays > 1) {
-        // streak broken
         impact.streak = 1;
-        streakBonus = 20; // restart bonus
+        streakBonus = 20;
       }
-      // diffDays === 0 → same day logged again, no streak bonus
+      // diffDays === 0 → same-day log, no streak bonus
     }
 
-    // base XP for the meal
     const mealXP = 10;
-
-    // total XP awarded this update
     const xpAwarded = mealXP + streakBonus;
 
     impact.total_meals_logged += 1;
     impact.xp += xpAwarded;
     impact.last_activity_date = today;
 
-    // forest stage progression
+    // forest stages
     if (impact.xp < 50) impact.forest_stage = "SEED";
     else if (impact.xp < 200) impact.forest_stage = "SPROUT";
     else if (impact.xp < 500) impact.forest_stage = "SAPLING";
@@ -97,7 +101,7 @@ router.post("/update", async (req, res, next) => {
       totals: impact,
       progress: {
         xp: impact.xp,
-        forest_stage: impact.forest_stage,
+        forest_stage: impact.forest_stage
       }
     });
 

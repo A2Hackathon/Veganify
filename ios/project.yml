@@ -1,0 +1,47 @@
+name: Sprout
+options:
+  bundleIdPrefix: com.veganify
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: en
+  xcodeVersion: "15.0"
+
+packages: {}
+
+targets:
+  Sprout:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: .
+        excludes:
+          - "*.md"
+          - "project.yml"
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Sprout
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              UISceneConfigurationName: Default Configuration
+              UISceneDelegateClassName: "$(PRODUCT_MODULE_NAME).SceneDelegate"
+        NSCameraUsageDescription: "We need camera access to scan ingredient lists and menus."
+        NSPhotoLibraryUsageDescription: "We need photo library access to upload images for scanning."
+        UIRequiredDeviceCapabilities:
+          - armv7
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+
