@@ -152,4 +152,28 @@ they do not validate real OCR, model accuracy, dietary suitability or allergen
 safety. `isConsumable` is a legacy compatibility field summarizing these statuses,
 not a safety certification. Verify dietary and allergen requirements independently.
 Model and OCR failures, provider configuration, and human review remain distinct
-from successful HTTP transport. Upload size limits and cleanup are separate work.
+from successful HTTP transport. Upload limits are described below; OCR worker cancellation remains separate work.
+
+
+## Image upload boundary
+
+Ingredient, menu, fridge and receipt scans accept one `image` file of at most
+5 MiB. Multipart parsing also limits text fields (10), parts (11), field names
+(100 bytes) and field values (8,192 bytes). File/value size errors return 413;
+other malformed/excess multipart input returns 400 before the scan handler.
+These limits apply to uploaded bytes, not decoded image dimensions.
+
+Accepted image bytes are passed directly to Tesseract as a Buffer. Upload parsing
+no longer creates `uploads/` files, including requests that exit early or fail
+analysis. Existing files from older runs are not automatically deleted. Request
+buffers become eligible for garbage collection once processing releases them;
+immediate secure erasure or a measured process-memory bound is not claimed.
+
+HTTP tests verify the exact 5 MiB boundary, oversized rejection before OCR,
+multiple files, excess fields, field size, memory-only file metadata and recovery
+on a later request. The ingredient route uses controlled OCR in these tests;
+real image decoding, device uploads and provider quality remain unverified.
+There is no process-wide upload/concurrency quota or decoded-pixel cap yet.
+The existing ingredient OCR timeout does not terminate its worker, and other
+OCR paths still lack a deadline. Worker lifetime, disconnect cancellation,
+authentication and dependency hardening remain separate unfinished work.

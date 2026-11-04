@@ -1,14 +1,13 @@
 import express from "express";
-import multer from "multer";
+import { imageUpload } from "../utils/imageUpload.js";
 import Tesseract from "tesseract.js";
 import { UserStorage } from "../utils/jsonStorage.js";
 import { answerWithContext } from "../utils/llmClient.js";
 
 const router = express.Router();
-const upload = multer({ dest: "uploads/" });
 
 // POST /scan/menu (image, returns MenuDish[])
-router.post("/", upload.single("image"), async (req, res) => {
+router.post("/", imageUpload, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "image required" });
 
@@ -26,7 +25,7 @@ router.post("/", upload.single("image"), async (req, res) => {
       });
     }
 
-    const result = await Tesseract.recognize(req.file.path, "eng");
+    const result = await Tesseract.recognize(req.file.buffer, "eng");
     const text = result.data.text || "";
 
     const dishes = text
