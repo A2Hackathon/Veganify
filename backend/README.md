@@ -225,3 +225,8 @@ changed file-size boundary behavior. Both fresh installation and the 21-test
 suite pass. Startup coverage launches the actual application with temporary
 storage and no provider credentials, including failed optional network-address
 discovery. It verifies the health endpoint, not every API or real OCR/model work.
+
+### Menu analysis contract
+Menu scans accept up to 100 distinct OCR lines (200 characters per line, 8,000 total). Empty or excessive text returns HTTP 422 before inference. Model responses must contain exactly one recognized status and bounded suggestion for every requested dish; missing, duplicate, unknown or malformed records return HTTP 502 instead of fabricated modification advice. Modifiable dishes require a nonempty suggestion. Valid responses preserve menu order.
+
+Controlled HTTP tests cover these contracts; they do not establish OCR accuracy or dietary safety. The existing shared demo profile and recipe-analysis contracts still need further work.
