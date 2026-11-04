@@ -1,6 +1,7 @@
 // utils/jsonStorage.js
 // JSON file-based storage to replace MongoDB
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, openSync, closeSync, fsyncSync, renameSync, unlinkSync } from "fs";
+import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
@@ -21,8 +22,10 @@ if (!existsSync(DATA_DIR)) {
 
 // Initialize empty files if they don't exist
 function ensureFile(filePath, defaultValue = []) {
-  if (!existsSync(filePath)) {
-    writeFileSync(filePath, JSON.stringify(defaultValue, null, 2), "utf8");
+  try {
+    writeFileSync(filePath, JSON.stringify(defaultValue, null, 2), { encoding: "utf8", flag: "wx", mode: 0o600 });
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
   }
 }
 
@@ -32,25 +35,32 @@ ensureFile(USER_IMPACT_FILE, []);
 ensureFile(RECIPES_FILE, []);
 ensureFile(GROCERY_ITEMS_FILE, []);
 
-// Helper to read JSON file
 function readJSON(filePath) {
-  try {
-    const content = readFileSync(filePath, "utf8");
-    return JSON.parse(content);
-  } catch (err) {
-    console.error(`Error reading ${filePath}:`, err);
-    return [];
-  }
+  const data = JSON.parse(readFileSync(filePath, "utf8"));
+  if (!Array.isArray(data)) throw new Error("Storage collection must be an array");
+  return data;
 }
 
-// Helper to write JSON file
 function writeJSON(filePath, data) {
+  const serialized = JSON.stringify(data, null, 2);
+  const temporary = `${filePath}.${randomUUID()}.tmp`;
+  let descriptor;
+  let created = false;
   try {
-    writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
-    return true;
-  } catch (err) {
-    console.error(`Error writing ${filePath}:`, err);
-    return false;
+    // Publish a complete sibling file; failed writes never truncate live data.
+    descriptor = openSync(temporary, "wx", 0o600);
+    created = true;
+    writeFileSync(descriptor, serialized, "utf8");
+    fsyncSync(descriptor);
+    closeSync(descriptor);
+    descriptor = undefined;
+    renameSync(temporary, filePath);
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+    if (created) {
+      try { unlinkSync(temporary); }
+      catch (error) { if (error.code !== "ENOENT") throw error; }
+    }
   }
 }
 
