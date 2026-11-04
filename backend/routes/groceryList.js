@@ -1,7 +1,7 @@
 import express from "express";
 import { UserStorage, GroceryItemStorage } from "../utils/jsonStorage.js";
 import { imageUpload } from "../utils/imageUpload.js";
-import Tesseract from "tesseract.js";
+import { recognizeImage } from "../utils/ocrService.js";
 
 const router = express.Router();
 
@@ -106,7 +106,7 @@ router.post("/scan-fridge", imageUpload, async (req, res) => {
     }
 
     // OCR the image
-    const result = await Tesseract.recognize(req.file.buffer, "eng");
+    const result = await recognizeImage(req.file.buffer, { req, res });
     const text = result.data.text || "";
 
     // naive: split by newline / comma and treat each line as a grocery item
@@ -134,7 +134,7 @@ router.post("/scan-fridge", imageUpload, async (req, res) => {
     res.json(createdItems);
   } catch (err) {
     console.error("scan-fridge error:", err);
-    res.status(500).json({ error: "Failed to scan fridge" });
+    res.status(err.status || 500).json({ error: "Failed to scan fridge" });
   }
 });
 
@@ -161,7 +161,7 @@ router.post("/scan-receipt", imageUpload, async (req, res) => {
       });
     }
 
-    const result = await Tesseract.recognize(req.file.buffer, "eng");
+    const result = await recognizeImage(req.file.buffer, { req, res });
     const text = result.data.text || "";
 
     const lines = text
@@ -188,7 +188,7 @@ router.post("/scan-receipt", imageUpload, async (req, res) => {
     res.json(createdItems);
   } catch (err) {
     console.error("scan-receipt error:", err);
-    res.status(500).json({ error: "Failed to scan receipt" });
+    res.status(err.status || 500).json({ error: "Failed to scan receipt" });
   }
 });
 

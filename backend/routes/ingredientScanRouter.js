@@ -35,59 +35,7 @@ router.post("/", imageUpload, async (req, res) => {
       });
     }
 
-    console.log("🔍 Starting OCR processing...");
-    // OCR processing with error handling and timeout
-    let result;
-    try {
-      // Add timeout wrapper to prevent hanging
-      let timeoutId;
-      const ocrPromise = recognize(req.file.buffer, "eng", {
-        logger: (m) => {
-          if (m.status === "recognizing text") {
-            console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
-          } else if (m.status === "loading tesseract core") {
-            console.log("Loading Tesseract core...");
-          } else if (m.status === "initializing tesseract") {
-            console.log("Initializing Tesseract...");
-          }
-        }
-      });
-      
-      // Add 60 second timeout for OCR processing
-      const timeoutPromise = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error("OCR processing timeout after 60 seconds")), 60000);
-      });
-      
-      try {
-        result = await Promise.race([ocrPromise, timeoutPromise]);
-      } finally {
-        // Clean up timeout if OCR completes before timeout
-        if (timeoutId) clearTimeout(timeoutId);
-      }
-    } catch (ocrError) {
-      console.error("❌ Tesseract OCR error:", ocrError);
-      console.error("OCR Error details:", {
-        name: ocrError?.name,
-        message: ocrError?.message,
-        code: ocrError?.code,
-        errno: ocrError?.errno,
-        stack: ocrError?.stack
-      });
-      
-      // Check for specific connection errors
-      if (ocrError?.message?.includes("connection") || 
-          ocrError?.message?.includes("ECONNREFUSED") ||
-          ocrError?.code === "ECONNREFUSED") {
-        console.error("⚠️ Connection error - Tesseract worker may have failed to start");
-        console.error("💡 This could be due to:");
-        console.error("   - Port conflicts");
-        console.error("   - Insufficient system resources");
-        console.error("   - Tesseract.js worker process failure");
-        throw new Error("OCR worker connection failed. Please try again or restart the server.");
-      }
-      
-      throw new Error(`OCR processing failed: ${ocrError?.message || "Unknown error"}`);
-    }
+    const result = await recognize(req.file.buffer, { req, res });
     const text = result.data.text || "";
     console.log(`📝 OCR extracted text (${text.length} chars): ${text.substring(0, 200)}...`);
 
@@ -148,9 +96,8 @@ router.post("/", imageUpload, async (req, res) => {
       console.error("💡 Try: Restart the server or check if port conflicts exist");
     }
     
-    // Instead of returning 500, return a valid response structure with error info
-    // This ensures the iOS app can always decode the response
-    res.status(200).json({ 
+    // Preserve the response shape while reporting processing failures.
+    res.status(err.status || 500).json({
       success: false,
       isConsumable: false,
       ingredients: [],
@@ -231,9 +178,8 @@ router.post("/text", async (req, res) => {
     console.error("Error message:", err.message);
     console.error("Error stack:", err.stack);
     
-    // Instead of returning 500, return a valid response structure with error info
-    // This ensures the iOS app can always decode the response
-    res.status(200).json({ 
+    // Preserve the response shape while reporting processing failures.
+    res.status(err.status || 500).json({
       success: false,
       isConsumable: false,
       ingredients: [],
