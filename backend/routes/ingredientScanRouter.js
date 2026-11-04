@@ -1,11 +1,10 @@
 // scanIngredients.js
 import express from "express";
 import { parseIngredients, scanResult } from "../utils/scanResults.js";
-import multer from "multer";
+import { imageUpload } from "../utils/imageUpload.js";
 
 export function createScanIngredientsRouter({ users, analyze, recognize }) {
 const router = express.Router();
-const upload = multer({ dest: "uploads/" });
 
 /*  
 =========================================================
@@ -13,14 +12,14 @@ const upload = multer({ dest: "uploads/" });
   ??OCR image ??ingredient list ??classification
 =========================================================
 */
-router.post("/", upload.single("image"), async (req, res) => {
+router.post("/", imageUpload, async (req, res) => {
   try {
     if (!req.file) {
       console.error("No file uploaded");
       return res.status(400).json({ error: "image required" });
     }
 
-    console.log(`📷 Processing image scan: ${req.file.path}`);
+    console.log("Processing ingredient image");
 
     // ALWAYS use the single Albert user
     let user = await users.findOne({ sproutName: "Albert" });
@@ -42,7 +41,7 @@ router.post("/", upload.single("image"), async (req, res) => {
     try {
       // Add timeout wrapper to prevent hanging
       let timeoutId;
-      const ocrPromise = recognize(req.file.path, "eng", {
+      const ocrPromise = recognize(req.file.buffer, "eng", {
         logger: (m) => {
           if (m.status === "recognizing text") {
             console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);

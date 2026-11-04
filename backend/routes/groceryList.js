@@ -1,10 +1,9 @@
 import express from "express";
 import { UserStorage, GroceryItemStorage } from "../utils/jsonStorage.js";
-import multer from "multer";
+import { imageUpload } from "../utils/imageUpload.js";
 import Tesseract from "tesseract.js";
 
 const router = express.Router();
-const upload = multer({ dest: "uploads/" });
 
 // GET /grocery-list?userId=...
 router.get("/", async (req, res) => {
@@ -84,7 +83,7 @@ router.post("/", async (req, res) => {
 });
 
 // POST /grocery-list/scan-fridge?userId=...
-router.post("/scan-fridge", upload.single("image"), async (req, res) => {
+router.post("/scan-fridge", imageUpload, async (req, res) => {
   try {
     const userId = req.query.userId || req.body.userId;
     if (!userId) return res.status(400).json({ error: "userId required" });
@@ -107,7 +106,7 @@ router.post("/scan-fridge", upload.single("image"), async (req, res) => {
     }
 
     // OCR the image
-    const result = await Tesseract.recognize(req.file.path, "eng");
+    const result = await Tesseract.recognize(req.file.buffer, "eng");
     const text = result.data.text || "";
 
     // naive: split by newline / comma and treat each line as a grocery item
@@ -140,7 +139,7 @@ router.post("/scan-fridge", upload.single("image"), async (req, res) => {
 });
 
 // POST /grocery-list/scan-receipt?userId=...
-router.post("/scan-receipt", upload.single("image"), async (req, res) => {
+router.post("/scan-receipt", imageUpload, async (req, res) => {
   try {
     const userId = req.query.userId || req.body.userId;
     if (!userId) return res.status(400).json({ error: "userId required" });
@@ -162,7 +161,7 @@ router.post("/scan-receipt", upload.single("image"), async (req, res) => {
       });
     }
 
-    const result = await Tesseract.recognize(req.file.path, "eng");
+    const result = await Tesseract.recognize(req.file.buffer, "eng");
     const text = result.data.text || "";
 
     const lines = text

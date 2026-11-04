@@ -1,18 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
-import { unlink } from 'node:fs/promises';
 import { scanResult } from '../utils/scanResults.js';
 import { createScanIngredientsRouter } from '../routes/ingredientScanRouter.js';
 
 async function withServer(run) {
   let checks = [];
   let calls = 0;
-  const uploads = [];
+  let ocrCalls = 0;
   const app = express();
   app.use(express.json());
   app.use('/scan/ingredients', createScanIngredientsRouter({
-    recognize: async path => { uploads.push(path); return {data:{text:''}}; },
+    recognize: async bytes => { assert.ok(Buffer.isBuffer(bytes)); ocrCalls++; return {data:{text:''}}; },
     users: { findOne: async () => ({ dietLevel: 'vegan' }) },
     analyze: async () => { calls++; return checks; },
   }));
@@ -24,13 +23,13 @@ async function withServer(run) {
     });
     return { status: response.status, body: await response.json() };
   };
-  const scanEmptyImage = async () => {
-    const form = new FormData(); form.append('image', new Blob(['controlled OCR fixture']), 'fixture.png');
+  const scanEmptyImage = async (bytes = 'controlled OCR fixture') => {
+    const form = new FormData(); form.append('image', new Blob([bytes]), 'fixture.png');
     const response = await fetch(`http://127.0.0.1:${server.address().port}/scan/ingredients`, {method:'POST', body:form});
     return {status:response.status, body:await response.json()};
   };
-  try { await run({ scanEmptyImage, post, set: value => { checks = value; }, calls: () => calls }); }
-  finally { await new Promise(resolve => server.close(resolve)); await Promise.all(uploads.map(path => unlink(path))); }
+  try { await run({ ocrCalls: () => ocrCalls, scanEmptyImage, post, set: value => { checks = value; }, calls: () => calls }); }
+  finally { await new Promise(resolve => server.close(resolve)); }
 }
 
 const allowed = ingredient => ({ ingredient, allowed: 'Allowed', reason: 'controlled fixture', suggestions: [] });
@@ -81,3 +80,9 @@ test('empty OCR is an explicit failure and never invokes analysis', async () => 
 test('empty analysis input cannot pass vacuous all-allowed check', () => {
   assert.equal(scanResult([], []).isConsumable, false);
 });
+
+test('oversized image is rejected before OCR', async () => withServer(async ({scanEmptyImage, ocrCalls}) => {
+  const result = await scanEmptyImage('x'.repeat(5 * 1024 * 1024 + 1));
+  assert.equal(result.status, 413);
+  assert.equal(ocrCalls(), 0);
+}));
