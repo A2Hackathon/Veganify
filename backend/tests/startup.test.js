@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, cp, symlink, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, cp, symlink, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,6 +37,18 @@ test('clean application starts without credentials or network address discovery'
       } catch { if (child.exitCode !== null) break; await new Promise(resolve => setTimeout(resolve,30)); }
     }
     assert.ok(ready,output);
+    for (const [path, body] of [
+      ['/recipes/veganize/analyze', {userId: 'demo', recipeText: 'Cook milk and rice.'}],
+      ['/recipes/veganize/commit', {recipeText: 'Cook milk and rice.', substitutions: []}],
+      ['/recipes/veganize', {userId: 'demo', inputText: 'Cook milk and rice.'}],
+    ]) {
+      const response = await fetch(`http://127.0.0.1:${port}${path}`, {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body),
+      });
+      assert.equal(response.status, 500, path);
+      assert.equal((await response.json()).success, undefined);
+    }
+    assert.deepEqual(JSON.parse(await readFile(join(root,'data','recipes.json'),'utf8')), []);
     assert.match(output,/Network address discovery unavailable/);
     assert.doesNotMatch(output,/Uncaught Exception|Unhandled Rejection/);
   } finally {

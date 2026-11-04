@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { extractedIngredients, rewrittenRecipe } from "./recipeResults.js";
 
 import { createModelClient } from "./modelClient.js";
 
@@ -44,21 +45,10 @@ ${recipeText}
       ],
     });
 
-    const raw = response.choices?.[0]?.message?.content || "";
-    const text = raw.trim();
-
-    const extracted = text
-      .split("\n")
-      .map((x) => x.replace(/^[-•*]\s*/, "").replace(/^\d+[.)]\s*/, "").trim())
-      .filter(Boolean)
-      .filter(x => x.length > 0);
-    
-    console.log(`📋 Extracted ${extracted.length} ingredients: ${extracted.join(", ")}`);
-    
-    return extracted;
-  } catch (err) {
-    console.error("extractIngredients error:", err);
-    return [];
+    return extractedIngredients(response.choices?.[0]?.message?.content);
+  } catch {
+    // A provider failure is not evidence that a recipe has no ingredients.
+    throw new Error("Ingredient extraction unavailable");
   }
 }
 
@@ -98,12 +88,10 @@ Rules:
       ],
     });
 
-    const raw = response.choices?.[0]?.message?.content || "";
-    const text = raw.trim();
-    return text || originalRecipe;
-  } catch (err) {
-    console.error("rewriteRecipeSteps error:", err);
-    return originalRecipe;
+    return rewrittenRecipe(response.choices?.[0]?.message?.content);
+  } catch {
+    // Never save the original recipe as a successful adaptation after failure.
+    throw new Error("Recipe rewrite unavailable");
   }
 }
 
