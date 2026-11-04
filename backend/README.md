@@ -130,3 +130,26 @@ revoke/rotate that credential at the provider: removing the current literal does
 not revoke it or remove repository history. This change does not alter provider
 settings or secrets, rewrite history, or test whether the exposed credential works.
 Configuration tests use a stub constructor and dummy values, with no network calls.
+
+
+## Ingredient scan contract
+
+Ingredient scans require 1–100 nonempty names, at most 200 characters per name
+and 8,000 characters total. Invalid manual input returns 400; OCR that yields no
+usable ingredient list returns 422 with `success: false` and `isConsumable: false`.
+Exact duplicate input names are collapsed while preserving input order.
+
+Every requested ingredient must have exactly one matching analysis record before
+it can be marked `Allowed`. Names match after trimming, without fuzzy matching.
+Missing or malformed records become `Ambiguous`; duplicate or unrequested model
+records invalidate the response's analysis records. Status must be exactly
+`Allowed`, `NotAllowed` or `Ambiguous`, reason must be bounded text, and suggestions
+must be a bounded list of strings. Output preserves input order. Empty results
+never imply consumability. An ambiguous result is not an approval.
+
+Tests use real local HTTP requests with controlled user/model/OCR dependencies;
+they do not validate real OCR, model accuracy, dietary suitability or allergen
+safety. `isConsumable` is a legacy compatibility field summarizing these statuses,
+not a safety certification. Verify dietary and allergen requirements independently.
+Model and OCR failures, provider configuration, and human review remain distinct
+from successful HTTP transport. Upload size limits and cleanup are separate work.
