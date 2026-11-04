@@ -1,11 +1,13 @@
 import OpenAI from "openai";
 
-const client = new OpenAI({
-  apiKey: "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",
-  baseURL: "https://openrouter.ai/api/v1",
-  timeout: 60000, // 60 seconds timeout for API requests
-  maxRetries: 2, // Retry failed requests up to 2 times
-});
+import { createModelClient } from "./modelClient.js";
+
+let client;
+function getClient() {
+  // Resolve configuration at request time, after server dotenv initialization.
+  if (!client) client = createModelClient(OpenAI);
+  return client;
+}
 
 // Gemini model from OpenRouter
 const MODEL = "google/gemini-2.5-flash";
@@ -34,7 +36,7 @@ ${recipeText}
 `;
 
   try {
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: MODEL,
       messages: [
         { role: "system", content: "You are a thorough ingredient extractor. Extract every single ingredient mentioned in recipes, especially animal products. Return only a plain list, one ingredient per line." },
@@ -88,7 +90,7 @@ Rules:
 `;
 
   try {
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: MODEL,
       messages: [
         { role: "system", content: "Rewrite recipes using substitutions." },
@@ -238,7 +240,7 @@ For "NotAllowed" ingredients, include at least 2-3 substitute suggestions in the
 `;
 
   try {
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: MODEL,
       messages: [
         { role: "system", content: `You are a strict dietary restriction analyzer for ${dietLevel} diets. You must identify ALL animal products including meat, seafood, dairy, eggs, and animal-derived ingredients. Be thorough and strict. Return only valid JSON arrays.` },
@@ -322,7 +324,7 @@ Answer the user's question naturally. If it's a greeting, respond warmly. If the
     console.log("Calling OpenAI API with model:", MODEL);
     console.log("User prompt length:", userPrompt.length);
     
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: MODEL,
       messages: [
         { role: "system", content: systemPrompt },
@@ -386,7 +388,7 @@ Return STRICT JSON array:
 `;
 
   try {
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: MODEL,
       messages: [
         {
