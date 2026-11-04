@@ -38,6 +38,8 @@ test('clean application starts without credentials or network address discovery'
     }
     assert.ok(ready,output);
     for (const [path, body] of [
+      ['/recipes/generate', {userId: 'demo', ingredients: ['rice']}],
+      ['/recipes/from-ingredients', {user_id: 'demo'}],
       ['/recipes/veganize/analyze', {userId: 'demo', recipeText: 'Cook milk and rice.'}],
       ['/recipes/veganize/commit', {recipeText: 'Cook milk and rice.', substitutions: []}],
       ['/recipes/veganize', {userId: 'demo', inputText: 'Cook milk and rice.'}],
@@ -49,6 +51,7 @@ test('clean application starts without credentials or network address discovery'
       assert.equal((await response.json()).success, undefined);
     }
     assert.deepEqual(JSON.parse(await readFile(join(root,'data','recipes.json'),'utf8')), []);
+    assert.deepEqual(JSON.parse(await readFile(join(root,'data','userImpact.json'),'utf8')), []);
     assert.match(output,/Network address discovery unavailable/);
     assert.doesNotMatch(output,/Uncaught Exception|Unhandled Rejection/);
   } finally {
