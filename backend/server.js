@@ -74,7 +74,9 @@ try {
     console.log(`Server listening on http://localhost:${PORT}`);
     console.log(`Server also accessible on http://127.0.0.1:${PORT}`);
     
-    const networkInterfaces = os.networkInterfaces();
+    let networkInterfaces = {};
+    try { networkInterfaces = os.networkInterfaces(); }
+    catch { console.warn("Network address discovery unavailable; localhost remains available"); }
     let networkIP = null;
     for (const interfaceName in networkInterfaces) {
       const interfaces = networkInterfaces[interfaceName];
