@@ -45,9 +45,7 @@ router.post("/generate", async (req, res) => {
 
     const generated = await generateRecipes(ingredientsList, 3);
 
-    const saved = [];
-    for (const r of generated) {
-      const recipe = await RecipeStorage.create({
+    const stored = await RecipeStorage.createMany(generated.map(r => ({
         userId: user._id,
         title: r.title || "Untitled",
         tags: r.tags || [],
@@ -63,9 +61,9 @@ router.post("/generate", async (req, res) => {
         originalPrompt: prompt || "",
         type: "simplified",
         substitutionMap: undefined,
-      });
+    })));
 
-      saved.push({
+    const saved = stored.map(recipe => ({
         id: recipe._id || recipe.id,
         userId: recipe.userId || user._id,
         title: recipe.title,
@@ -77,8 +75,7 @@ router.post("/generate", async (req, res) => {
         originalPrompt: recipe.originalPrompt,
         type: recipe.type,
         substitutionMap: recipe.substitutionMap || null,
-      });
-    }
+    }));
 
     res.json(saved);
   } catch (err) {

@@ -86,3 +86,28 @@ test('successful storage operations persist across a fresh process', async t => 
   assert.deepEqual(result.groceries, []);
   assert.equal(result.impact.xp, 2);
 });
+
+
+test('recipe batch is all-or-nothing on write failure and persists together after restart', async t => {
+  const { storage, file, modulePath } = await fixture(t);
+  await storage.RecipeStorage.create({ title: 'original' });
+  const before = fs.readFileSync(file, 'utf8');
+  const stub = t.mock.method(fs, 'renameSync', () => { throw new Error('batch replacement failed'); });
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(storage.RecipeStorage.createMany([{title:'one'}, {title:'two'}, {title:'three'}]), /batch replacement failed/);
+  } finally {
+    stub.mock.restore();
+    syncBuiltinESMExports();
+  }
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+  const batch = await storage.RecipeStorage.createMany([{title:'one'}, {title:'two'}, {title:'three'}]);
+  assert.equal(new Set(batch.map(recipe => recipe._id)).size, 3);
+  const script = `const s = await import(${JSON.stringify(pathToFileURL(modulePath).href)}); console.log(JSON.stringify(await s.RecipeStorage.find({})));`;
+  const rows = JSON.parse(execFileSync(process.execPath, ['--input-type=module','-e',script], {encoding:'utf8'}));
+  assert.deepEqual(rows.map(recipe => recipe.title), ['original','one','two','three']);
+  for (const value of [null, [], [{title:'a'}, null], Array(4).fill({title:'a'})]) {
+    await assert.rejects(storage.RecipeStorage.createMany(value));
+  }
+  assert.equal((await storage.RecipeStorage.find({})).length, 4);
+});

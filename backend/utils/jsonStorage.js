@@ -201,17 +201,27 @@ export const RecipeStorage = {
   },
 
   async create(recipeData) {
+    const [recipe] = await RecipeStorage.createMany([recipeData]);
+    return recipe;
+  },
+
+  async createMany(batch) {
+    if (!Array.isArray(batch) || !batch.length || batch.length > 3 ||
+        batch.some(item => !item || typeof item !== "object" || Array.isArray(item))) {
+      throw new Error("Expected one to three recipe records");
+    }
     const recipes = readJSON(RECIPES_FILE);
-    const newRecipe = {
-      _id: generateId(),
+    const timestamp = new Date().toISOString();
+    const created = batch.map(recipeData => ({
       ...recipeData,
+      _id: generateId(),
       userId: recipeData.userId?.toString() || recipeData.userId || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    recipes.push(newRecipe);
-    writeJSON(RECIPES_FILE, recipes);
-    return newRecipe;
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }));
+    // One file replacement commits the entire batch; no per-recipe partial saves.
+    writeJSON(RECIPES_FILE, [...recipes, ...created]);
+    return created;
   },
 
   async findById(id) {
