@@ -87,7 +87,7 @@ See `FIREWALL_SETUP.md` for detailed step-by-step instructions.
 ## Storage verification and limits
 
 The active server uses JSON collections in `backend/data`; the older MongoDB
-helpers are not the active persistence layer. Run the dependency-free storage
+helpers are not the active persistence layer. Run the storage
 regressions with Node.js 24:
 
 ```sh
@@ -204,3 +204,24 @@ The concurrency limit is per server process, applies after multipart parsing,
 and is not a global upload quota or decoded-image memory cap. Operating-system
 process termination is not a hard real-time guarantee. Later model requests and
 storage writes have separate lifecycles and are not cancelled by this OCR helper.
+
+
+## Reproducible backend environment
+
+Use Node.js 24 and `npm ci --ignore-scripts` inside `backend` (or add
+`--prefix backend` from the repository root). Dependencies are installed from
+`package-lock.json`; generated `node_modules` is no longer tracked. CI installs
+from an empty checkout, runs all tests and checks npm advisories. Direct runtime
+versions are pinned; compatible transitive fixes and the lockfile are committed.
+Run `npm run dev` for Node's built-in watch mode; nodemon is no longer required.
+Unused Gemini/UUID dependencies and stale MongoDB/JWT lock entries were removed.
+Legacy MongoDB helpers still exist but are not part of the active JSON backend.
+
+The clean-install audit on 2026-11-04 initially reported 15 findings, including
+stale lock entries; after reconciliation and updates it reported zero known
+findings. This is registry advisory coverage at that time, not proof of absence
+of vulnerabilities. Multer is now 2.5.0; exact-limit HTTP regressions verify its
+changed file-size boundary behavior. Both fresh installation and the 21-test
+suite pass. Startup coverage launches the actual application with temporary
+storage and no provider credentials, including failed optional network-address
+discovery. It verifies the health endpoint, not every API or real OCR/model work.
