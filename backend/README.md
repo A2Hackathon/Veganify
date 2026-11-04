@@ -152,7 +152,7 @@ they do not validate real OCR, model accuracy, dietary suitability or allergen
 safety. `isConsumable` is a legacy compatibility field summarizing these statuses,
 not a safety certification. Verify dietary and allergen requirements independently.
 Model and OCR failures, provider configuration, and human review remain distinct
-from successful HTTP transport. Upload limits are described below; OCR worker cancellation remains separate work.
+from successful HTTP transport. Upload limits and OCR worker ownership are described below.
 
 
 ## Image upload boundary
@@ -174,6 +174,33 @@ multiple files, excess fields, field size, memory-only file metadata and recover
 on a later request. The ingredient route uses controlled OCR in these tests;
 real image decoding, device uploads and provider quality remain unverified.
 There is no process-wide upload/concurrency quota or decoded-pixel cap yet.
-The existing ingredient OCR timeout does not terminate its worker, and other
-OCR paths still lack a deadline. Worker lifetime, disconnect cancellation,
-authentication and dependency hardening remain separate unfinished work.
+OCR execution is bounded as described below. Authentication and dependency
+hardening remain separate unfinished work.
+
+
+## OCR lifetime and admission
+
+All four scan routes use the same process-local OCR service. It admits at most
+two child processes, with no waiting queue; additional OCR work returns 503.
+A 60-second deadline covers process startup, Tesseract/model initialization,
+recognition and cleanup. A deadline returns 504 after the child has exited.
+A disconnected HTTP client cancels OCR. Failed or malformed child results return
+502, and extracted text is limited to 8,000 characters. Existing route error
+bodies remain, with meaningful failure HTTP statuses.
+
+Each child runs Tesseract, whose Node engine uses worker threads. The parent
+terminates the child process after a result, error, deadline or cancellation,
+and retains its capacity slot until process/IPC closure. This also covers a
+worker stuck during initialization, before Tesseract exposes a worker handle.
+Children exit if their parent IPC connection closes. Starting a process per
+scan costs more than a warm pool; no throughput improvement is claimed.
+
+Tests use real subprocesses and local HTTP with controlled worker scripts. They
+verify successful cleanup, invalid results, early exits, a blocked initialization
+deadline, capacity rejection/reuse, pre-abort and HTTP disconnect cancellation;
+they check that child PIDs no longer exist. These tests do not run real OCR or
+validate language-model downloads, image accuracy, memory bounds or iOS behavior.
+The concurrency limit is per server process, applies after multipart parsing,
+and is not a global upload quota or decoded-image memory cap. Operating-system
+process termination is not a hard real-time guarantee. Later model requests and
+storage writes have separate lifecycles and are not cancelled by this OCR helper.

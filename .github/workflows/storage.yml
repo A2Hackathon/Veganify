@@ -12,7 +12,7 @@ jobs:
           node-version: '24'
       - name: Check application JavaScript syntax
         run: |
-          for file in backend/*.js backend/routes/*.js backend/utils/*.js backend/models/*.js; do
+          for file in backend/*.js backend/routes/*.js backend/utils/*.js backend/models/*.js backend/workers/*.js; do
             node --check "$file"
           done
       - name: Run isolated storage regressions

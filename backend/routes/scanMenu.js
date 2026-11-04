@@ -1,6 +1,6 @@
 import express from "express";
 import { imageUpload } from "../utils/imageUpload.js";
-import Tesseract from "tesseract.js";
+import { recognizeImage } from "../utils/ocrService.js";
 import { UserStorage } from "../utils/jsonStorage.js";
 import { answerWithContext } from "../utils/llmClient.js";
 
@@ -25,7 +25,7 @@ router.post("/", imageUpload, async (req, res) => {
       });
     }
 
-    const result = await Tesseract.recognize(req.file.buffer, "eng");
+    const result = await recognizeImage(req.file.buffer, { req, res });
     const text = result.data.text || "";
 
     const dishes = text
@@ -74,7 +74,7 @@ For each dish, respond as JSON array:
     res.json({ dishes: resultDishes });
   } catch (err) {
     console.error("scan menu error:", err);
-    res.status(500).json({ error: "Failed to scan menu" });
+    res.status(err.status || 500).json({ error: "Failed to scan menu" });
   }
 });
 
