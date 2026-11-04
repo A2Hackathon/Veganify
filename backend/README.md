@@ -114,3 +114,19 @@ claimed. A killed process can leave an unused `.tmp` file for operator cleanup.
 Backups, multi-process locking, authenticated user isolation and migration to a
 transactional store remain separate work. Current routes still share one demo
 profile; this repair does not make the service suitable for public deployment.
+
+
+## Model credentials
+
+Copy `.env.example` to `.env` in the backend directory and set
+`OPENROUTER_API_KEY` before starting the server. The active model client uses
+OpenRouter; older Gemini/Mongo setup instructions and `setup.js` do not configure
+this client. Keep the key server-side and restart after changing it. Missing or
+blank configuration prevents outbound model requests; existing route-specific
+fallbacks still apply and are not evidence of successful model analysis.
+
+A credential was previously committed in `utils/llmClient.js`. Its owner must
+revoke/rotate that credential at the provider: removing the current literal does
+not revoke it or remove repository history. This change does not alter provider
+settings or secrets, rewrite history, or test whether the exposed credential works.
+Configuration tests use a stub constructor and dummy values, with no network calls.
