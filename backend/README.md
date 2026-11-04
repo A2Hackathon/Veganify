@@ -82,3 +82,35 @@ If your MacBook cannot connect to the Windows server, you may need to configure 
 
 See `FIREWALL_SETUP.md` for detailed step-by-step instructions.
 
+
+
+## Storage verification and limits
+
+The active server uses JSON collections in `backend/data`; the older MongoDB
+helpers are not the active persistence layer. Run the dependency-free storage
+regressions with Node.js 24:
+
+```sh
+npm test --prefix backend  # from the repository root
+```
+
+Tests create temporary collections, inject partial-write and replacement errors,
+and verify successful mutations in a fresh process. They never use production
+files, MongoDB, OCR or model APIs. CI also checks application JavaScript syntax.
+This suite does not establish complete server, iOS, OCR or model correctness.
+
+Malformed, unreadable or non-array collection files now reject the operation.
+Do not replace a damaged collection with an empty array to make a request pass;
+recover a validated backup. Writes serialize to a unique sibling file, flush its
+contents and rename it over the collection only after writing succeeds. Errors
+propagate to callers instead of returning unsaved records. New files use owner
+read/write permissions. A failed write/rename keeps the old collection available.
+
+This remains a single-process prototype: read/modify/write operations are
+synchronous within one process, but multiple server processes can lose updates.
+The rename is a single-file publication boundary, not a cross-collection
+transaction. Directory metadata is not fsynced; power-loss durability is not
+claimed. A killed process can leave an unused `.tmp` file for operator cleanup.
+Backups, multi-process locking, authenticated user isolation and migration to a
+transactional store remain separate work. Current routes still share one demo
+profile; this repair does not make the service suitable for public deployment.
