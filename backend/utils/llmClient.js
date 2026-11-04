@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { dietaryAnalysis, generatedRecipes } from "./modelResults.js";
 import { extractedIngredients, rewrittenRecipe } from "./recipeResults.js";
 
 import { createModelClient } from "./modelClient.js";
@@ -96,96 +97,6 @@ Rules:
 }
 
 //
-// helper for JSON clean-up
-//
-function extractCleanJSON(text) {
-  if (!text) return null;
-
-  let cleaned = text.trim();
-
-  cleaned = cleaned.replace(/```json/gi, "").replace(/```/g, "").trim();
-
-  const match = cleaned.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
-  if (match) return match[0];
-  return cleaned;
-}
-
-//
-// Fallback ingredient analyzer when LLM fails
-//
-function getFallbackAnalysis(ingredient, dietLevel) {
-  const ingredientLower = ingredient.toLowerCase().trim();
-  const diet = dietLevel?.toLowerCase() || "vegan";
-  
-  // Common meat keywords
-  const meatKeywords = ["meat", "beef", "pork", "chicken", "turkey", "lamb", "veal", "duck", "bacon", "sausage", "ham", "steak"];
-  // Common seafood keywords
-  const seafoodKeywords = ["fish", "shrimp", "crab", "lobster", "salmon", "tuna", "cod", "shellfish", "scallops", "mussels"];
-  // Common dairy keywords
-  const dairyKeywords = ["milk", "cheese", "butter", "cream", "yogurt", "sour cream", "whey", "casein"];
-  // Common egg keywords
-  const eggKeywords = ["egg", "eggs", "mayonnaise", "mayo"];
-  
-  let isNotAllowed = false;
-  let suggestions = [];
-  let reason = "";
-  
-  // Check for meat
-  if (meatKeywords.some(keyword => ingredientLower.includes(keyword))) {
-    isNotAllowed = true;
-    reason = "Contains meat products";
-    if (diet === "vegan") {
-      suggestions = ["tofu", "tempeh", "seitan", "jackfruit", "mushrooms", "lentils"];
-    } else if (diet === "vegetarian") {
-      suggestions = ["tofu", "tempeh", "seitan", "mushrooms", "lentils"];
-    }
-  }
-  // Check for seafood
-  else if (seafoodKeywords.some(keyword => ingredientLower.includes(keyword))) {
-    isNotAllowed = true;
-    reason = "Contains seafood";
-    if (diet === "vegan") {
-      suggestions = ["tofu", "tempeh", "jackfruit", "hearts of palm", "mushrooms"];
-    } else if (diet === "vegetarian") {
-      suggestions = ["tofu", "tempeh", "mushrooms"];
-    }
-  }
-  // Check for dairy
-  else if (dairyKeywords.some(keyword => ingredientLower.includes(keyword))) {
-    isNotAllowed = true;
-    reason = "Contains dairy products";
-    if (diet === "vegan") {
-      if (ingredientLower.includes("milk")) {
-        suggestions = ["almond milk", "soy milk", "oat milk", "coconut milk"];
-      } else if (ingredientLower.includes("cheese")) {
-        suggestions = ["nutritional yeast", "vegan cheese", "cashew cheese"];
-      } else if (ingredientLower.includes("butter")) {
-        suggestions = ["vegan butter", "coconut oil", "olive oil"];
-      } else if (ingredientLower.includes("cream")) {
-        suggestions = ["coconut cream", "soy cream", "cashew cream"];
-      } else {
-        suggestions = ["vegan alternatives"];
-      }
-    }
-  }
-  // Check for eggs
-  else if (eggKeywords.some(keyword => ingredientLower.includes(keyword))) {
-    isNotAllowed = true;
-    reason = "Contains eggs";
-    if (diet === "vegan") {
-      suggestions = ["flax egg (1 tbsp flax + 3 tbsp water)", "chia egg", "applesauce", "silken tofu"];
-    }
-  }
-  
-  return {
-    ingredient: ingredient,
-    allowed: isNotAllowed ? "NotAllowed" : "Ambiguous",
-    reason: reason || "Unable to analyze - please check manually",
-    suggestions: suggestions
-  };
-}
-
-//
 // 3. Dietary check
 //
 export async function isAllowedForUser(userPrefs, ingredientTags) {
@@ -236,55 +147,9 @@ For "NotAllowed" ingredients, include at least 2-3 substitute suggestions in the
       ],
     });
 
-    const raw = response.choices?.[0]?.message?.content || "";
-    const cleaned = extractCleanJSON(raw);
-
-    try {
-      const parsed = JSON.parse(cleaned);
-      console.log(`✅ isAllowedForUser: Analyzed ${ingredientTags.length} ingredients, got ${parsed.length} results`);
-      
-      return parsed.map(item => {
-        const allowed = item.allowed || "Ambiguous";
-        let suggestions = Array.isArray(item.suggestions) ? item.suggestions : [];
-        
-        // If ingredient is NotAllowed but has no suggestions, use fallback
-        if (allowed === "NotAllowed" && suggestions.length === 0) {
-          console.log(`⚠️ No suggestions provided for "${item.ingredient}", using fallback`);
-          const fallback = getFallbackAnalysis(item.ingredient || "", dietLevel);
-          suggestions = fallback.suggestions;
-        }
-        
-        return {
-          ingredient: item.ingredient || "",
-          allowed: allowed,
-          reason: item.reason || "",
-          suggestions: suggestions
-        };
-      });
-    } catch (err) {
-      console.error("❌ Failed to parse JSON from model");
-      console.error("RAW OUTPUT:\n", raw);
-      console.error("CLEANED:\n", cleaned);
-      console.error("⚠️ Using fallback analysis due to JSON parsing error");
-
-      // Use fallback analysis for each ingredient
-      return ingredientTags.map((tag) => {
-        const fallback = getFallbackAnalysis(tag, dietLevel);
-        console.log(`📋 Fallback for "${tag}": ${fallback.allowed} - ${fallback.reason}`);
-        return fallback;
-      });
-    }
-  } catch (err) {
-    console.error("❌ isAllowedForUser ERROR:", err);
-    console.error("Error details:", err.message);
-    console.error("⚠️ Using fallback analysis for ingredients");
-
-    // Use fallback analysis for each ingredient
-    return ingredientTags.map((tag) => {
-      const fallback = getFallbackAnalysis(tag, dietLevel);
-      console.log(`📋 Fallback for "${tag}": ${fallback.allowed} - ${fallback.reason}`);
-      return fallback;
-    });
+    return dietaryAnalysis(ingredientTags, response.choices?.[0]?.message?.content);
+  } catch {
+    return dietaryAnalysis(ingredientTags, null);
   }
 }
 
@@ -387,14 +252,8 @@ Return STRICT JSON array:
       ],
     });
 
-    const raw = response.choices?.[0]?.message?.content?.trim() || "";
-    const match = raw.match(/\[[\s\S]*\]/);
-    const jsonString = match ? match[0] : raw;
-    const parsed = JSON.parse(jsonString);
-
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (err) {
-    console.error("generateRecipes error:", err);
-    return [];
+    return generatedRecipes(response.choices?.[0]?.message?.content, count);
+  } catch {
+    throw new Error("Recipe generation unavailable");
   }
 }

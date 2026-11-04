@@ -232,3 +232,8 @@ Menu scans accept up to 100 distinct OCR lines (200 characters per line, 8,000 t
 Controlled HTTP tests cover these contracts; they do not establish OCR accuracy or dietary safety. The existing shared demo profile and recipe-analysis contracts still need further work.
 
 Recipe extraction and rewriting now reject provider/configuration failures and empty or oversized output. Callers return an error instead of reporting zero violations or saving the unchanged original as an adaptation. The isolated full-server test exercises all three affected HTTP paths without credentials and verifies that no recipe was persisted. Text shape validation does not establish ingredient completeness, successful substitution, or dietary safety; classification and recipe-generation validation remain follow-up work.
+
+### Structured model responses
+Dietary checks preserve every requested ingredient. Missing or invalid classifications become `Ambiguous`; provider failures no longer produce keyword-based dietary or substitution claims. This applies to both ingredient scans and recipe analysis.
+
+Recipe generation requires the complete requested batch (at most three recipes), with bounded titles, tags, durations, ingredient fields and nonempty steps. The whole batch is validated before persistence or XP updates. Unsupported model fields, including IDs and image URLs, are discarded. Failed inference raises an error instead of returning an empty successful batch. Controlled parser tests and an isolated server test verify these contracts and no recipe/XP writes on provider-configuration failure. These checks do not establish dietary accuracy, ingredient completeness, atomic multi-recipe persistence, or real model quality.
