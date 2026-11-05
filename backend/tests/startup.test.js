@@ -63,6 +63,13 @@ test('clean application starts without credentials or network address discovery'
       assert.equal(response.status, 500, path);
       assert.equal((await response.json()).success, undefined);
     }
+    const chat = await fetch(`http://127.0.0.1:${port}/ai/ask`, {
+      method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer test-only-token-0123456789abcdef0123456789'},
+      body:JSON.stringify({question:'private-question-marker-7852'}),
+    });
+    assert.equal(chat.status,200);
+    await chat.json();
+    assert.doesNotMatch(output,/private-question-marker-7852/);
     assert.deepEqual(JSON.parse(await readFile(join(root,'data','recipes.json'),'utf8')), []);
     assert.deepEqual(JSON.parse(await readFile(join(root,'data','userImpact.json'),'utf8')), []);
     assert.match(output,/Network address discovery unavailable/);

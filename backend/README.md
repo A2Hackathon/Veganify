@@ -246,3 +246,5 @@ All application routes require `Authorization: Bearer <VEGANIFY_API_TOKEN>` befo
 This is one shared demo profile: every authorized client accesses the same data. It is not multi-user authentication, per-user authorization, or tenant isolation. Restart the server with a replacement token to rotate access. Previously exposed provider credentials still require revocation separately.
 
 The shared HTTP error handler returns generic 400/413/415 responses for known JSON/body-size/encoding failures and a generic 500 for unexpected failures. It does not serialize parser payloads, exception messages or storage paths. Existing route-specific logging still needs a broader privacy review.
+
+AI chat diagnostics now use fixed failure messages rather than logging questions, profile context, response snippets or provider exception objects. Context/storage failures return a generic HTTP error without the underlying exception message. Controlled provider and HTTP tests check private marker exclusion; the isolated application test checks captured process output. This is scoped to the chat path; other routes still require a logging review.

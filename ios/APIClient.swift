@@ -68,13 +68,12 @@ class APIClient {
             print("Successfully decoded response")
             return decoded
         } catch let error as DecodingError {
-            print("JSON Decoding Error: \(error)")
+            print("Response decoding failed")
             throw error
         } catch {
-            print("Network Error: \(error.localizedDescription)")
+            print("Request failed")
             if let urlError = error as? URLError {
                 print("   URL Error code: \(urlError.code.rawValue)")
-                print("   URL Error description: \(urlError.localizedDescription)")
                 
                 switch urlError.code {
                 case .cannotConnectToHost:
