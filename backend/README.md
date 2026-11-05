@@ -248,3 +248,5 @@ This is one shared demo profile: every authorized client accesses the same data.
 The shared HTTP error handler returns generic 400/413/415 responses for known JSON/body-size/encoding failures and a generic 500 for unexpected failures. It does not serialize parser payloads, exception messages or storage paths. Existing route-specific logging still needs a broader privacy review.
 
 AI chat diagnostics now use fixed failure messages rather than logging questions, profile context, response snippets or provider exception objects. Context/storage failures return a generic HTTP error without the underlying exception message. Controlled provider and HTTP tests check private marker exclusion; the isolated application test checks captured process output. This is scoped to the chat path; other routes still require a logging review.
+
+`POST /ai/ask` requires a nonblank string `question` of at most 4,000 characters. Invalid values return 400 before profile lookup or inference; valid surrounding whitespace is trimmed. This per-question bound is not a request-rate or model-concurrency limit.
