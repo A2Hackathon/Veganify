@@ -1,0 +1,20 @@
+name: iOS client contract checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  client:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test Debug and Release connection configuration
+        run: |
+          swiftc -D DEBUG ios/APIConfiguration.swift tests/APIConfigurationTests.swift -o /tmp/config-debug
+          /tmp/config-debug
+          swiftc ios/APIConfiguration.swift tests/APIConfigurationTests.swift -o /tmp/config-release
+          /tmp/config-release
+      - name: Type-check actual iOS API client and models
+        run: |
+          SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          xcrun swiftc -typecheck -D DEBUG -sdk "$SDK" -target arm64-apple-ios16.0-simulator ios/Models.swift ios/APIConfiguration.swift ios/APIClient.swift
+          xcrun swiftc -typecheck -sdk "$SDK" -target arm64-apple-ios16.0-simulator ios/Models.swift ios/APIConfiguration.swift ios/APIClient.swift
