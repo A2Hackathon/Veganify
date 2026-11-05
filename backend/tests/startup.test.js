@@ -23,7 +23,7 @@ test('clean application starts without credentials or network address discovery'
     await new Promise(resolve => reservation.close(resolve));
     let output = '';
     child = spawn(process.execPath, ['--import','./no-network.mjs','server.js'], {
-      cwd:root, env:{PATH:process.env.PATH, PORT:String(port)}, stdio:['ignore','pipe','pipe'],
+      cwd:root, env:{PATH:process.env.PATH, PORT:String(port), VEGANIFY_API_TOKEN:'test-only-token-0123456789abcdef0123456789'}, stdio:['ignore','pipe','pipe'],
     });
     child.stdout.on('data', bytes => { output += bytes; });
     child.stderr.on('data', bytes => { output += bytes; });
@@ -37,6 +37,12 @@ test('clean application starts without credentials or network address discovery'
       } catch { if (child.exitCode !== null) break; await new Promise(resolve => setTimeout(resolve,30)); }
     }
     assert.ok(ready,output);
+    for (const path of ['/scan/ingredients','/scan/menu','/recipes','/impact','/ai','/profile','/onboarding','/home','/progress','/grocery-list']) {
+      const response = await fetch(`http://127.0.0.1:${port}${path}`);
+      assert.equal(response.status, 401, path);
+    }
+    const malformed = await fetch(`http://127.0.0.1:${port}/profile`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{broken'});
+    assert.equal(malformed.status, 401);
     for (const [path, body] of [
       ['/recipes/generate', {userId: 'demo', ingredients: ['rice']}],
       ['/recipes/from-ingredients', {user_id: 'demo'}],
@@ -45,7 +51,7 @@ test('clean application starts without credentials or network address discovery'
       ['/recipes/veganize', {userId: 'demo', inputText: 'Cook milk and rice.'}],
     ]) {
       const response = await fetch(`http://127.0.0.1:${port}${path}`, {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body),
+        method: 'POST', headers: {'Content-Type':'application/json', Authorization:'Bearer test-only-token-0123456789abcdef0123456789'}, body: JSON.stringify(body),
       });
       assert.equal(response.status, 500, path);
       assert.equal((await response.json()).success, undefined);

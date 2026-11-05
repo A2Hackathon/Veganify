@@ -59,3 +59,12 @@ ios/
 ├── ImagePicker.swift              # Image picker helper
 └── Info.plist                     # App configuration
 ```
+### Current connection configuration
+The client no longer uses the old hardcoded LAN address or placeholder production URL. In a **local, unshared Xcode scheme**, set Run → Arguments → Environment Variables:
+
+- `VEGANIFY_BASE_URL`: the backend HTTPS origin, with no path/query/user credentials.
+- `VEGANIFY_API_TOKEN`: the operator's shared demo token (32–128 URL-safe characters), matching the backend.
+
+Do not commit populated schemes, tokens, or credential-bearing screenshots. These values are read from the process environment and are not bundled defaults. Debug builds also allow HTTP loopback (`http://127.0.0.1:4000`) for a simulator on the backend host; remote addresses and Release builds require HTTPS. Missing configuration fails before networking. HTTP redirects are refused. This runtime configuration supports a developer demo, not a distributed production login flow or separate user accounts. Physical-device transport/ATS setup and complete app UI builds remain unverified; the client/model compiler and configuration tests are distinct CI checks.
+
+Request and response bodies are no longer printed by APIClient. Earlier network setup instructions referring to a hardcoded address are superseded by this section.

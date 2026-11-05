@@ -24,6 +24,7 @@
 		1A00001D /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A00001E /* APIClient.swift */; };
 		1A00001F /* PreferenceEditors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A000020 /* PreferenceEditors.swift */; };
 		1A000021 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A000022 /* Assets.xcassets */; };
+		AAC000000000000000000001 /* APIConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC000000000000000000002 /* APIConfiguration.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +47,7 @@
 		1A000020 /* PreferenceEditors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferenceEditors.swift; sourceTree = "<group>"; };
 		1A000022 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1A000024 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		AAC000000000000000000002 /* APIConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfiguration.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -93,6 +95,7 @@
 				1A00001A /* SproutLogo.swift */,
 				1A00001C /* OnboardingView.swift */,
 				1A00001E /* APIClient.swift */,
+                AAC000000000000000000002 /* APIConfiguration.swift */,
 				1A000020 /* PreferenceEditors.swift */,
 				1A000022 /* Assets.xcassets */,
 				1A000024 /* Info.plist */,
@@ -184,6 +187,7 @@
 				1A000019 /* SproutLogo.swift in Sources */,
 				1A00001B /* OnboardingView.swift in Sources */,
 				1A00001D /* APIClient.swift in Sources */,
+                AAC000000000000000000001 /* APIConfiguration.swift in Sources */,
 				1A00001F /* PreferenceEditors.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

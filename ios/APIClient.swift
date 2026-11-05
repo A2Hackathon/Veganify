@@ -4,30 +4,22 @@ import UIKit
 class APIClient {
     static let shared = APIClient()
     
-    private let baseURL: String
+    private let configuration: Result<APIConfiguration, Error>
     private let session: URLSession
-    
-    init() {
-        #if DEBUG
-        #if targetEnvironment(simulator)
-        self.baseURL = "http://10.5.174.193:4000"
-        #else
-        self.baseURL = "http://10.5.174.193:4000"
-        #endif
-        #else
-        self.baseURL = "https://your-production-url.com"
-        #endif
-        self.session = URLSession.shared
-        print("APIClient initialized with baseURL: \(self.baseURL)")
+
+    init(environment: [String: String] = ProcessInfo.processInfo.environment) {
+        self.configuration = Result { try APIConfiguration(environment: environment) }
+        self.session = URLSession(configuration: .ephemeral, delegate: NoRedirectDelegate(), delegateQueue: nil)
     }
-    
+
     private func request<T: Decodable>(
         endpoint: String,
         method: String = "GET",
         body: Encodable? = nil,
         imageData: Data? = nil
     ) async throws -> T {
-        let fullURL = "\(baseURL)\(endpoint)"
+        let configuration = try configuration.get()
+        let fullURL = configuration.baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + endpoint
         print("API Request: \(method) \(fullURL)")
         
         guard let url = URL(string: fullURL) else {
@@ -37,6 +29,7 @@ class APIClient {
         
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.setValue("Bearer \(configuration.token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30.0
         
@@ -44,9 +37,7 @@ class APIClient {
             let encoder = JSONEncoder()
             encoder.outputFormatting = .prettyPrinted
             request.httpBody = try encoder.encode(body)
-            if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
-                print("Request body: \(bodyString)")
-            }
+
         } else if let imageData = imageData {
             let boundary = UUID().uuidString
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
@@ -65,13 +56,10 @@ class APIClient {
             
             print("Response status: \(httpResponse.statusCode)")
             
-            if let responseString = String(data: data, encoding: .utf8) {
-                print("Response body: \(responseString.prefix(500))\(responseString.count > 500 ? "..." : "")")
-            }
+
             
             guard (200...299).contains(httpResponse.statusCode) else {
-                let errorBody = String(data: data, encoding: .utf8) ?? "No error message"
-                print("HTTP Error \(httpResponse.statusCode): \(errorBody)")
+                print("HTTP Error \(httpResponse.statusCode)")
                 throw APIError.httpError(httpResponse.statusCode)
             }
             
@@ -499,5 +487,15 @@ enum APIError: LocalizedError {
         case .decodingError:
             return "Failed to decode response"
         }
+    }
+}
+
+// Never forward a demo credential to a redirect destination.
+private final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate {
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    willPerformHTTPRedirection response: HTTPURLResponse,
+                    newRequest request: URLRequest,
+                    completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(nil)
     }
 }

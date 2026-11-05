@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import os from "os";
+import { sharedDemoAccess } from "./utils/accessControl.js";
 import "./utils/jsonStorage.js";
 
 import scanIngredientsRoutes from "./routes/scanIngredients.js";
@@ -27,8 +28,13 @@ app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: false
 }));
+
+app.get("/", (req, res) => res.json({ ok: true, msg: "Veganify backend (Albert focus) running" }));
+
+// Authenticate before parsing request bodies or invoking storage/model routes.
+app.use(sharedDemoAccess(process.env.VEGANIFY_API_TOKEN));
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -38,7 +44,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/", (req, res) => res.json({ ok: true, msg: "Veganify backend (Albert focus) running" }));
+
 
 try {
   console.log("Registering routes...");
@@ -70,7 +76,7 @@ const PORT = process.env.PORT || 4000;
 
 let server;
 try {
-  server = app.listen(PORT, "0.0.0.0", () => {
+  server = app.listen(PORT, process.env.HOST || "127.0.0.1", () => {
     console.log(`Server listening on http://localhost:${PORT}`);
     console.log(`Server also accessible on http://127.0.0.1:${PORT}`);
     
