@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import os from "os";
+import { httpErrors } from "./utils/httpErrors.js";
 import { sharedDemoAccess } from "./utils/accessControl.js";
 import "./utils/jsonStorage.js";
 
@@ -67,10 +68,7 @@ try {
   process.exit(1);
 }
 
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({ error: err.message || "Internal Server Error" });
-});
+app.use(httpErrors);
 
 const PORT = process.env.PORT || 4000;
 

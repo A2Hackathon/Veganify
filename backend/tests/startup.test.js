@@ -43,6 +43,13 @@ test('clean application starts without credentials or network address discovery'
     }
     const malformed = await fetch(`http://127.0.0.1:${port}/profile`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{broken'});
     assert.equal(malformed.status, 401);
+    const invalidJSON = await fetch(`http://127.0.0.1:${port}/profile`, {
+      method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer test-only-token-0123456789abcdef0123456789'},
+      body:'{"private-note": sensitive-payload}',
+    });
+    assert.equal(invalidJSON.status, 400);
+    assert.deepEqual(await invalidJSON.json(), {error:'Invalid JSON body'});
+
     for (const [path, body] of [
       ['/recipes/generate', {userId: 'demo', ingredients: ['rice']}],
       ['/recipes/from-ingredients', {user_id: 'demo'}],
