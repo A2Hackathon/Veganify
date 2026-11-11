@@ -4,7 +4,7 @@ import { generateRecipes, extractIngredients, rewriteRecipeSteps } from "../util
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { parseGenerationRequest, parseSaveRequest } from "../utils/recipeInput.js";
+import { parseGenerationRequest, parseSaveRequest, parseAdaptationRequest } from "../utils/recipeInput.js";
 import { parseIngredients } from "../utils/scanResults.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -133,11 +133,11 @@ router.post("/save", async (req, res) => {
 
 // POST /recipes/veganize (single-step veganization for iOS compatibility)
 router.post("/veganize", async (req, res) => {
+  let input;
+  try { input = parseAdaptationRequest(req.body); }
+  catch { return res.status(400).json({ error: "Provide a userId (1–128 characters) and recipe inputText (1–8000 characters)" }); }
   try {
-    const { userId, inputText } = req.body;
-    if (!userId || !inputText) {
-      return res.status(400).json({ error: "userId and inputText required" });
-    }
+    const { inputText } = input;
 
     // ALWAYS use the single Albert user
     let user = await UserStorage.findOne({ sproutName: "Albert" });

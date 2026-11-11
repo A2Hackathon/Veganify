@@ -63,3 +63,8 @@ export function parseSaveRequest(body) {
     substitutionMap,
   };
 }
+
+export function parseAdaptationRequest(body) {
+  if (!isRecord(body)) throw new Error('Invalid adaptation request');
+  return { userId: text(body.userId, 128, true), inputText: text(body.inputText, 8000, true) };
+}
