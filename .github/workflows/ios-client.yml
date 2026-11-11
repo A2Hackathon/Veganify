@@ -4,7 +4,7 @@ permissions:
   contents: read
 jobs:
   client:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - name: Test Debug and Release connection configuration
