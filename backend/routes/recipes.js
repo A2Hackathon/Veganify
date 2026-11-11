@@ -4,7 +4,7 @@ import { generateRecipes, extractIngredients, rewriteRecipeSteps } from "../util
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { parseGenerationRequest } from "../utils/recipeInput.js";
+import { parseGenerationRequest, parseSaveRequest } from "../utils/recipeInput.js";
 import { parseIngredients } from "../utils/scanResults.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -92,39 +92,10 @@ router.post("/generate", async (req, res) => {
 
 // POST /recipes/save
 router.post("/save", async (req, res) => {
+  let input;
+  try { input = parseSaveRequest(req.body); }
+  catch { return res.status(400).json({ error: "Invalid recipe: provide a userId, title and bounded recipe fields with supported types" }); }
   try {
-    const recipeData = req.body;
-    let userId, title, tags, duration, ingredients, steps, previewImageUrl, originalPrompt, type, substitutionMap;
-    
-    if (recipeData.recipe) {
-      const recipe = recipeData.recipe;
-      userId = recipeData.userId;
-      title = recipe.title;
-      tags = recipe.tags;
-      duration = recipe.duration;
-      ingredients = recipe.ingredients;
-      steps = recipe.steps;
-      previewImageUrl = recipe.previewImageUrl;
-      originalPrompt = recipe.originalPrompt;
-      type = recipe.type;
-      substitutionMap = recipe.substitutionMap;
-    } else {
-      userId = recipeData.userId;
-      title = recipeData.title;
-      tags = recipeData.tags;
-      duration = recipeData.duration;
-      ingredients = recipeData.ingredients;
-      steps = recipeData.steps;
-      previewImageUrl = recipeData.previewImageUrl;
-      originalPrompt = recipeData.originalPrompt;
-      type = recipeData.type;
-      substitutionMap = recipeData.substitutionMap;
-    }
-    
-    if (!userId || !title) {
-      return res.status(400).json({ error: "userId and title required" });
-    }
-
     // ALWAYS use the single Albert user
     let user = await UserStorage.findOne({ sproutName: "Albert" });
     if (!user) {
@@ -139,18 +110,7 @@ router.post("/save", async (req, res) => {
       });
     }
 
-    const recipe = await RecipeStorage.create({
-      userId: user._id,
-      title,
-      tags: tags || [],
-      duration: duration || "",
-      ingredients: ingredients || [],
-      steps: steps || [],
-      previewImageUrl: previewImageUrl || "",
-      originalPrompt: originalPrompt || "",
-      type: type || "simplified",
-      substitutionMap: substitutionMap || undefined,
-    });
+    const recipe = await RecipeStorage.create({ ...input, userId: user._id });
 
     res.json({
       id: recipe._id || recipe.id,
