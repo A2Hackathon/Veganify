@@ -68,3 +68,26 @@ export function parseAdaptationRequest(body) {
   if (!isRecord(body)) throw new Error('Invalid adaptation request');
   return { userId: text(body.userId, 128, true), inputText: text(body.inputText, 8000, true) };
 }
+
+// Select by presence so malformed primary fields cannot hide behind an alias.
+function alias(body, primary, fallback) {
+  return Object.hasOwn(body, primary) ? body[primary] : body[fallback];
+}
+
+export function parseVeganizeRequest(body, { commit = false } = {}) {
+  if (!isRecord(body)) throw new Error('Invalid veganize request');
+  const rawUserId = alias(body, 'userId', 'userID');
+  const userId = commit && !Object.hasOwn(body, 'userId') && !Object.hasOwn(body, 'userID')
+    ? undefined : text(rawUserId, 128, true);
+  let recipeContent = alias(body, 'recipeText', 'recipe');
+  if (commit && !Object.hasOwn(body, 'recipeText') && isRecord(recipeContent)) recipeContent = recipeContent.text;
+  recipeContent = text(recipeContent, 8000, true);
+  if (!commit) return { userId, recipeContent };
+  const rawSubs = alias(body, 'substitutions', 'chosenSubs');
+  if (!Array.isArray(rawSubs)) throw new Error('Substitutions required');
+  const subs = list(rawSubs, 100, substitution => {
+    if (!isRecord(substitution)) throw new Error('Invalid substitution');
+    return { original: text(substitution.original, 200, true), substitute: text(substitution.substitute, 200, true) };
+  });
+  return { userId, recipeContent, subs, originalPrompt: text(body.originalPrompt, 16000) };
+}

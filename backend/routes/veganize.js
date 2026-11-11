@@ -1,4 +1,5 @@
 import express from "express";
+import { parseVeganizeRequest } from "../utils/recipeInput.js";
 import { UserStorage, RecipeStorage } from "../utils/jsonStorage.js";
 import { extractIngredients, rewriteRecipeSteps, isAllowedForUser } from "../utils/llmClient.js";
 import { readFileSync } from "fs";
@@ -12,13 +13,11 @@ const router = express.Router();
 
 // POST /veganize/analyze
 router.post("/analyze", async (req, res) => {
+  let input;
+  try { input = parseVeganizeRequest(req.body); }
+  catch { return res.status(400).json({ error: "Invalid recipe adaptation request" }); }
   try {
-    const { userId, userID, recipeText, recipe } = req.body;
-    const actualUserId = userId || userID; // Support both userId and userID
-    const recipeContent = recipeText || recipe; // Support both parameter names
-    if (!actualUserId || !recipeContent) {
-      return res.status(400).json({ error: "userId/userID and recipeText/recipe required" });
-    }
+    const { recipeContent } = input;
 
     // ALWAYS use the single Albert user
     let user = await UserStorage.findOne({ sproutName: "Albert" });
@@ -80,17 +79,11 @@ router.post("/analyze", async (req, res) => {
 
 // POST /veganize/commit
 router.post("/commit", async (req, res) => {
+  let input;
+  try { input = parseVeganizeRequest(req.body, { commit: true }); }
+  catch { return res.status(400).json({ error: "Invalid recipe adaptation request" }); }
   try {
-    const { userId, userID, recipeText, recipe: recipeParam, substitutions, chosenSubs, originalPrompt } = req.body;
-    const actualUserId = userId || userID; // Support both userId and userID
-    const recipeContent = recipeText || recipeParam?.text || recipeParam; // Support recipeText, recipe.text, or recipe
-    const subs = substitutions || chosenSubs; // Support both parameter names
-    
-    if (!recipeContent || !Array.isArray(subs)) {
-      return res
-        .status(400)
-        .json({ error: "recipeText/recipe and substitutions/chosenSubs required" });
-    }
+    const { userId: actualUserId, recipeContent, subs, originalPrompt } = input;
 
     // userId is optional in commit route, but preferred if provided
     let user = null;
@@ -112,12 +105,7 @@ router.post("/commit", async (req, res) => {
       .map((x) => x.trim())
       .filter(Boolean);
 
-    const substitutionMap = {};
-    subs.forEach((s) => {
-      if (s.original && s.substitute) {
-        substitutionMap[s.original] = s.substitute;
-      }
-    });
+    const substitutionMap = Object.fromEntries(subs.map(s => [s.original, s.substitute]));
 
     const savedRecipe = await RecipeStorage.create({
       userId: user?._id || null,
