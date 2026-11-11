@@ -1,21 +1,13 @@
 import express from "express";
+import { eatingStyleToDietLevel } from "../utils/dietMapping.js";
 import { UserStorage, UserImpactStorage } from "../utils/jsonStorage.js";
 
 const router = express.Router();
 
-function eatingStyleToDietLevel(eatingStyle) {
-  if (!eatingStyle) return "flexitarian";
-  const val = eatingStyle.toLowerCase();
-  if (val.includes("vegan")) return "vegan";
-  if (val.includes("ovo-vegetarian")) return "ovo";
-  if (val.includes("lacto-ovo")) return "lacto_ovo";
-  if (val.includes("lacto-vegetarian")) return "lacto";
-  if (val.includes("pescatarian")) return "pescatarian";
-  if (val.includes("vegetarian")) return "vegetarian";
-  return "flexitarian";
-}
-
 router.post("/profile", async (req, res) => {
+  let dietLevel;
+  try { dietLevel = eatingStyleToDietLevel(req.body?.eatingStyle); }
+  catch { return res.status(400).json({ error: "Provide a supported eatingStyle" }); }
   try {
     const {
       eatingStyle,
@@ -33,7 +25,6 @@ router.post("/profile", async (req, res) => {
       sproutName
     });
 
-    const dietLevel = eatingStyleToDietLevel(eatingStyle);
 
     console.log("Ensuring single Albert user exists...");
     let user = await UserStorage.findOne({ sproutName: "Albert" });
