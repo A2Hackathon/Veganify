@@ -40,11 +40,9 @@ router.get("/", async (req, res) => {
     
     // Handle shared Albert user - find or create user with sproutName "Albert"
     if (userId === "ALBERT_SHARED_USER") {
-      console.log("Looking for shared Albert user...");
       user = await UserStorage.findOne({ sproutName: "Albert" });
       
       if (!user) {
-        console.log("Shared Albert user not found, creating...");
         // Create shared Albert user
         user = await UserStorage.create({
           name: "User",
@@ -65,18 +63,14 @@ router.get("/", async (req, res) => {
             total_meals_logged: 0,
             forest_stage: "SEED",
           });
-          console.log("UserImpact created for shared Albert user");
-        } catch (impactErr) {
-          console.error("Failed to create UserImpact for Albert (non-critical):", impactErr.message);
+        } catch {
+          console.error("Failed to create UserImpact for Albert (non-critical):");
         }
-        
-        console.log("Shared Albert user created with ID:", user._id);
-      } else {
-        console.log("Found existing shared Albert user:", user._id);
+
       }
     } else {
       // All users must use Albert - redirect to Albert user
-      console.log("Non-Albert userId provided, redirecting to Albert user");
+
       user = await UserStorage.findOne({ sproutName: "Albert" });
       if (!user) {
         // Create Albert if it doesn't exist
@@ -115,8 +109,8 @@ router.get("/", async (req, res) => {
     };
 
     res.json(profile);
-  } catch (err) {
-    console.error("Get profile error:", err);
+  } catch {
+    console.error("Get profile error:");
     res.status(500).json({ error: "Failed to get profile" });
   }
 });
@@ -130,15 +124,6 @@ router.patch("/", async (req, res) => {
   try {
     const profile = req.body;
     const userId = profile.id;
-
-    console.log("PATCH /profile - Received update request:", {
-      userId,
-      eatingStyle: profile.eatingStyle,
-      dietaryRestrictions: profile.dietaryRestrictions?.length || 0,
-      cuisinePreferences: profile.cuisinePreferences?.length || 0,
-      cookingStylePreferences: profile.cookingStylePreferences?.length || 0,
-      sproutName: profile.sproutName
-    });
 
     if (!userId) return res.status(400).json({ error: "id required" });
 
@@ -172,15 +157,6 @@ router.patch("/", async (req, res) => {
       // Shared-demo lookup uses this fixed identity across all routes.
       sproutName: "Albert",
     });
-    
-    console.log("Profile saved to JSON storage:", {
-      userId: user._id,
-      dietLevel: user.dietLevel,
-      extraForbiddenTags: user.extraForbiddenTags.length,
-      preferredCuisines: user.preferredCuisines.length,
-      cookingStylePreferences: user.cookingStylePreferences.length,
-      sproutName: user.sproutName
-    });
 
     const impact = await UserImpactStorage.findOne({ user_id: userObjectId });
     const xp = impact?.xp || 0;
@@ -204,8 +180,8 @@ router.patch("/", async (req, res) => {
     };
 
     res.json(updatedProfile);
-  } catch (err) {
-    console.error("Update profile error:", err);
+  } catch {
+    console.error("Update profile error:");
     res.status(500).json({ error: "Failed to update profile" });
   }
 });
@@ -223,8 +199,8 @@ router.post("/parse-restrictions", async (req, res) => {
       .filter(Boolean);
 
     res.json({ restrictions });
-  } catch (err) {
-    console.error("parse-restrictions error:", err);
+  } catch {
+    console.error("parse-restrictions error:");
     res.status(500).json({ error: "Failed to parse restrictions" });
   }
 });
