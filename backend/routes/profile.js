@@ -1,4 +1,5 @@
 import express from "express";
+import { eatingStyleToDietLevel } from "../utils/dietMapping.js";
 import { UserStorage, UserImpactStorage } from "../utils/jsonStorage.js";
 
 const router = express.Router();
@@ -122,6 +123,10 @@ router.get("/", async (req, res) => {
 
 // PATCH /profile
 router.patch("/", async (req, res) => {
+  let requestedDiet;
+  try {
+    if (req.body && Object.hasOwn(req.body, 'eatingStyle')) requestedDiet = eatingStyleToDietLevel(req.body.eatingStyle);
+  } catch { return res.status(400).json({ error: "Provide a supported eatingStyle" }); }
   try {
     const profile = req.body;
     const userId = profile.id;
@@ -155,19 +160,8 @@ router.patch("/", async (req, res) => {
     }
     userObjectId = user._id;
 
-    // Convert eatingStyle back to dietLevel
-    let dietLevel = user.dietLevel;
-    if (profile.eatingStyle) {
-      const val = profile.eatingStyle.toLowerCase();
-      if (val.includes("vegan")) dietLevel = "vegan";
-      else if (val.includes("ovo-vegetarian")) dietLevel = "ovo";
-      else if (val.includes("lacto-ovo")) dietLevel = "lacto_ovo";
-      else if (val.includes("lacto-vegetarian")) dietLevel = "lacto";
-      else if (val.includes("pescatarian")) dietLevel = "pescatarian";
-      else if (val.includes("vegetarian")) dietLevel = "vegetarian";
-      else dietLevel = "flexitarian";
-    }
-    
+    const dietLevel = requestedDiet ?? user.dietLevel;
+
     // Update user
     user = await UserStorage.findByIdAndUpdate(userObjectId, {
       name: profile.userName || user.name,
