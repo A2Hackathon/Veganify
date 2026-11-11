@@ -4,6 +4,8 @@ import { generateRecipes, extractIngredients, rewriteRecipeSteps } from "../util
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { parseGenerationRequest } from "../utils/recipeInput.js";
+import { parseIngredients } from "../utils/scanResults.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -12,11 +14,11 @@ const router = express.Router();
 
 // POST /recipes/generate
 router.post("/generate", async (req, res) => {
+  let input;
+  try { input = parseGenerationRequest(req.body); }
+  catch { return res.status(400).json({ error: "Provide a userId (1–128 characters), an optional prompt (up to 4000 characters), and at most 100 ingredient names (200 characters each, 8000 total)" }); }
   try {
-    const { userId, ingredients, prompt } = req.body;
-    if (!userId) {
-      return res.status(400).json({ error: "userId required" });
-    }
+    const { ingredients, prompt } = input;
 
     // ALWAYS use the single Albert user
     let user = await UserStorage.findOne({ sproutName: "Albert" });
@@ -34,7 +36,7 @@ router.post("/generate", async (req, res) => {
 
     // If ingredients not provided, fetch from grocery list
     let ingredientsList = ingredients;
-    if (!Array.isArray(ingredientsList) || ingredientsList.length === 0) {
+    if (ingredientsList.length === 0) {
       const groceryItems = await GroceryItemStorage.find({ userId: user._id });
       ingredientsList = groceryItems.map(item => item.name);
     }
@@ -42,6 +44,10 @@ router.post("/generate", async (req, res) => {
     if (ingredientsList.length === 0) {
       return res.status(400).json({ error: "No ingredients available. Please add items to your grocery list or provide ingredients." });
     }
+
+    // Stored grocery names must obey the same inference bounds as supplied names.
+    try { ingredientsList = parseIngredients({ ingredients: ingredientsList }); }
+    catch { return res.status(400).json({ error: "Grocery ingredients exceed recipe generation limits or contain invalid names" }); }
 
     const generated = await generateRecipes(ingredientsList, 3);
 
