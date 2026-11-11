@@ -78,8 +78,8 @@ router.post("/generate", async (req, res) => {
     }));
 
     res.json(saved);
-  } catch (err) {
-    console.error("generate recipes error:", err);
+  } catch {
+    console.error("generate recipes error:");
     res.status(500).json({ error: "Failed to generate recipes" });
   }
 });
@@ -159,8 +159,8 @@ router.post("/save", async (req, res) => {
       type: recipe.type,
       substitutionMap: recipe.substitutionMap || null,
     });
-  } catch (err) {
-    console.error("save recipe error:", err);
+  } catch {
+    console.error("save recipe error:");
     res.status(500).json({ error: "Failed to save recipe" });
   }
 });
@@ -188,9 +188,7 @@ router.post("/veganize", async (req, res) => {
     }
 
     // Extract ingredients
-    console.log("?�� Calling LLM (extractIngredients) for recipe veganization...");
     const ingredients = await extractIngredients(inputText);
-    console.log("??LLM extracted", ingredients.length, "ingredients");
 
     // Get substitutions
     const substitutions = JSON.parse(readFileSync(join(__dirname, "../config/substitutions.json"), "utf-8"));
@@ -211,9 +209,7 @@ router.post("/veganize", async (req, res) => {
     }
 
     // Rewrite recipe
-    console.log("?�� Calling LLM (rewriteRecipeSteps) to veganize recipe...");
     const rewritten = await rewriteRecipeSteps(adaptedIngredients, inputText);
-    console.log("??LLM rewrote recipe successfully");
 
     // Convert to steps array
     const steps = rewritten
@@ -259,8 +255,8 @@ router.post("/veganize", async (req, res) => {
     };
 
     res.json(result);
-  } catch (err) {
-    console.error("veganize recipe error:", err);
+  } catch {
+    console.error("veganize recipe error:");
     res.status(500).json({ error: "Failed to veganize recipe" });
   }
 });
@@ -302,8 +298,8 @@ router.get("/saved", async (req, res) => {
     }));
 
     res.json(result);
-  } catch (err) {
-    console.error("get saved recipes error:", err);
+  } catch {
+    console.error("get saved recipes error:");
     res.status(500).json({ error: "Failed to load saved recipes" });
   }
 });
