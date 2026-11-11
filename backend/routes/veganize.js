@@ -34,37 +34,21 @@ router.post("/analyze", async (req, res) => {
       });
     }
 
-    console.log(`📝 Analyzing recipe content (${recipeContent.length} chars)...`);
     const ingredients = await extractIngredients(recipeContent);
-    console.log(`📋 Extracted ${ingredients.length} ingredients from recipe`);
 
     const prefs = {
       dietLevel: user.dietLevel || "vegan",
       extraForbiddenTags: user.extraForbiddenTags || [],
     };
-    
-    console.log(`🔍 Checking ingredients against diet: ${prefs.dietLevel}, restrictions: ${prefs.extraForbiddenTags.join(", ") || "none"}`);
 
     const checks = await isAllowedForUser(prefs, ingredients);
-    console.log(`🔍 Analyzed ${ingredients.length} ingredients, got ${checks.length} checks`);
-    
-    // Log all checks for debugging
-    checks.forEach(check => {
-      console.log(`  - ${check.ingredient}: ${check.allowed} (${check.reason})`);
-    });
 
     // Load substitutions config for suggestions
     const substitutions = JSON.parse(readFileSync(join(__dirname, "../config/substitutions.json"), "utf-8"));
     const dietLevel = user.dietLevel?.toLowerCase() || "vegan";
 
     const problematic = checks
-      .filter((c) => {
-        const isProblematic = c.allowed !== "Allowed";
-        if (isProblematic) {
-          console.log(`⚠️ Problematic ingredient found: ${c.ingredient} (${c.allowed})`);
-        }
-        return isProblematic;
-      })
+      .filter(c => c.allowed !== "Allowed")
       .map((c) => {
         // Get suggestions from LLM response first
         let suggestions = Array.isArray(c.suggestions) ? c.suggestions : [];
@@ -74,28 +58,22 @@ router.post("/analyze", async (req, res) => {
           const ingredientKey = c.ingredient.toUpperCase();
           if (substitutions[ingredientKey]?.[dietLevel]) {
             suggestions = substitutions[ingredientKey][dietLevel];
-            console.log(`📋 Using substitution config for ${c.ingredient}: ${suggestions.join(", ")}`);
           }
         }
-        
-        console.log(`✅ Returning problematic ingredient: ${c.ingredient} with ${suggestions.length} suggestions`);
-        
+
         return {
           original: c.ingredient,
           suggestions: suggestions,
         };
       });
 
-    console.log(`📊 Total problematic ingredients: ${problematic.length}`);
-    console.log(`📋 Problematic ingredients: ${problematic.map(p => p.original).join(", ")}`);
-
     res.json({
       success: true,
       violatesCount: problematic.length,
       problematicIngredients: problematic,
     });
-  } catch (err) {
-    console.error("veganize analyze error:", err);
+  } catch {
+    console.error("veganize analyze error:");
     res.status(500).json({ error: "Failed to analyze recipe" });
   }
 });
@@ -170,8 +148,8 @@ router.post("/commit", async (req, res) => {
     };
 
     res.json({ adaptedRecipe });
-  } catch (err) {
-    console.error("veganize commit error:", err);
+  } catch {
+    console.error("veganize commit error:");
     res.status(500).json({ error: "Failed to veganize recipe" });
   }
 });
