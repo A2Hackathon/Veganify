@@ -11,10 +11,11 @@ function computeLevelAndXpToNext(xp) {
 
 // Example: POST /impact/log-meal
 router.post("/log-meal", async (req, res) => {
+  const userId = req.body?.userId;
+  if (typeof userId !== "string" || !userId.trim() || userId.length > 128) {
+    return res.status(400).json({ error: "userId must contain 1 to 128 characters" });
+  }
   try {
-    const { userId } = req.body;
-    if (!userId) return res.status(400).json({ error: "userId required" });
-
     // ALWAYS use the single Albert user
     let user = await UserStorage.findOne({ sproutName: "Albert" });
     if (!user) {
