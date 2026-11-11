@@ -3,6 +3,11 @@ import express from "express";
 import { parseIngredients, scanResult } from "../utils/scanResults.js";
 import { imageUpload } from "../utils/imageUpload.js";
 
+// Preserve expected OCR failure statuses without trusting arbitrary exception values.
+function scanFailureStatus(error) {
+  return [400, 499, 502, 503, 504].includes(error?.status) ? error.status : 500;
+}
+
 export function createScanIngredientsRouter({ users, analyze, recognize }) {
 const router = express.Router();
 
@@ -19,12 +24,9 @@ router.post("/", imageUpload, async (req, res) => {
       return res.status(400).json({ error: "image required" });
     }
 
-    console.log("Processing ingredient image");
-
     // ALWAYS use the single Albert user
     let user = await users.findOne({ sproutName: "Albert" });
     if (!user) {
-      console.log("Creating Albert user for scan...");
       user = await users.create({
         name: "User",
         dietLevel: "vegan",
@@ -37,7 +39,6 @@ router.post("/", imageUpload, async (req, res) => {
 
     const result = await recognize(req.file.buffer, { req, res });
     const text = result.data.text || "";
-    console.log(`📝 OCR extracted text (${text.length} chars): ${text.substring(0, 200)}...`);
 
     let ingredients;
     try { ingredients = parseIngredients({ text }); }
@@ -48,21 +49,11 @@ router.post("/", imageUpload, async (req, res) => {
       extraForbiddenTags: user.extraForbiddenTags || [],
     };
 
-    console.log(`🔍 Checking ingredients against diet: ${prefs.dietLevel}`);
     let checks;
     try {
       checks = await analyze(prefs, ingredients);
-      console.log(`✅ Got ${checks.length} check results`);
-    } catch (llmError) {
-      console.error("❌ LLM API error:", llmError);
-      console.error("LLM Error details:", {
-        name: llmError?.name,
-        message: llmError?.message,
-        stack: llmError?.stack
-      });
-      console.error("⚠️ isAllowedForUser should not throw - using fallback");
-      // isAllowedForUser should always return a result (even fallback), so this shouldn't happen
-      // But if it does, return a basic response instead of throwing
+    } catch {
+      console.error("Ingredient analysis unavailable");
       checks = ingredients.map(ing => ({
         ingredient: ing,
         allowed: "Ambiguous",
@@ -84,24 +75,12 @@ router.post("/", imageUpload, async (req, res) => {
 
     res.json(scanResult(ingredients, checks));
   } catch (err) {
-    console.error("❌ OCR ingredient scan error:", err);
-    console.error("Error name:", err.name);
-    console.error("Error message:", err.message);
-    console.error("Error code:", err.code);
-    console.error("Error stack:", err.stack);
-    
-    // Check for connection-related errors
-    if (err.message && err.message.includes("connection")) {
-      console.error("⚠️ Connection error detected - this might be a Tesseract worker issue");
-      console.error("💡 Try: Restart the server or check if port conflicts exist");
-    }
-    
-    // Preserve the response shape while reporting processing failures.
-    res.status(err.status || 500).json({
+    console.error("Ingredient image scan failed");
+    res.status(scanFailureStatus(err)).json({
       success: false,
       isConsumable: false,
       ingredients: [],
-      error: err.message || "Failed to scan ingredients"
+      error: "Failed to scan ingredients"
     });
   }
 });
@@ -121,7 +100,6 @@ router.post("/text", async (req, res) => {
     // ALWAYS use the single Albert user
     let user = await users.findOne({ sproutName: "Albert" });
     if (!user) {
-      console.log("Creating Albert user for text analysis...");
       user = await users.create({
         name: "User",
         dietLevel: "vegan",
@@ -137,21 +115,11 @@ router.post("/text", async (req, res) => {
       extraForbiddenTags: user.extraForbiddenTags || [],
     };
 
-    console.log(`🔍 Checking ${ingredientsList.length} ingredients against diet: ${prefs.dietLevel}`);
     let checks;
     try {
       checks = await analyze(prefs, ingredientsList);
-      console.log(`✅ Got ${checks.length} check results`);
-    } catch (llmError) {
-      console.error("❌ LLM API error:", llmError);
-      console.error("LLM Error details:", {
-        name: llmError?.name,
-        message: llmError?.message,
-        stack: llmError?.stack
-      });
-      console.error("⚠️ isAllowedForUser should not throw - this is unexpected");
-      // isAllowedForUser should always return a result (even fallback), so this shouldn't happen
-      // But if it does, return a basic response
+    } catch {
+      console.error("Ingredient analysis unavailable");
       checks = ingredientsList.map(ing => ({
         ingredient: ing,
         allowed: "Ambiguous",
@@ -173,17 +141,12 @@ router.post("/text", async (req, res) => {
 
     res.json(scanResult(ingredientsList, checks));
   } catch (err) {
-    console.error("❌ Ingredient text analysis error:", err);
-    console.error("Error name:", err.name);
-    console.error("Error message:", err.message);
-    console.error("Error stack:", err.stack);
-    
-    // Preserve the response shape while reporting processing failures.
-    res.status(err.status || 500).json({
+    console.error("Ingredient text scan failed");
+    res.status(scanFailureStatus(err)).json({
       success: false,
       isConsumable: false,
       ingredients: [],
-      error: err.message || "Failed to analyze ingredient text"
+      error: "Failed to analyze ingredient text"
     });
   }
 });
