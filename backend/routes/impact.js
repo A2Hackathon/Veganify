@@ -46,17 +46,16 @@ router.post("/log-meal", async (req, res) => {
       ? new Date(impact.last_activity_date)
       : null;
 
-    if (!last) {
+    // Streaks use UTC dates so host timezone and daylight-saving changes do not affect them.
+    const dayMs = 24 * 60 * 60 * 1000;
+    const dayDifference = last
+      ? Math.floor(today.getTime() / dayMs) - Math.floor(last.getTime() / dayMs)
+      : NaN;
+    if (dayDifference === 1) {
+      impact.streak_days += 1;
+    } else if (dayDifference !== 0) {
+      // First activity, a missed day, or an invalid/future stored timestamp starts a new streak.
       impact.streak_days = 1;
-    } else {
-      const diff = Math.floor(
-        (today - last) / (1000 * 60 * 60 * 24)
-      );
-      if (diff === 1) {
-        impact.streak_days += 1;
-      } else if (diff > 1) {
-        impact.streak_days = 1;
-      }
     }
 
     impact.total_meals_logged += 1;
