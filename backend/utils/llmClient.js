@@ -1,6 +1,7 @@
+import { createDietaryService } from "./dietaryService.js";
 import OpenAI from "openai";
 import { createAnswerService } from "./answerService.js";
-import { dietaryAnalysis, generatedRecipes } from "./modelResults.js";
+import { generatedRecipes } from "./modelResults.js";
 import { extractedIngredients, rewrittenRecipe } from "./recipeResults.js";
 
 import { createModelClient } from "./modelClient.js";
@@ -100,59 +101,8 @@ Rules:
 //
 // 3. Dietary check
 //
-export async function isAllowedForUser(userPrefs, ingredientTags) {
-  const dietLevel = userPrefs.dietLevel?.toLowerCase() || "vegan";
-  
-  const prompt = `
-User dietary restrictions:
-- Level: ${dietLevel}
-- Forbidden tags: ${userPrefs.extraForbiddenTags?.join(", ") || "none"}
-
-IMPORTANT: For ${dietLevel} diet, the following are NOT ALLOWED:
-- ALL meat products (beef, pork, chicken, turkey, lamb, veal, duck, game meat, etc. - including ground, diced, sliced, whole, processed, etc.)
-- ALL seafood (fish, shrimp, crab, lobster, scallops, mussels, etc.)
-- ALL dairy products (milk, cheese, butter, cream, yogurt, sour cream, etc.)
-- ALL eggs and egg products
-- ALL animal-derived ingredients (chicken broth, beef stock, fish sauce, gelatin, lard, etc.)
-- Honey (for strict vegan)
-
-Check each ingredient carefully:
-${ingredientTags.join(", ")}
-
-For each ingredient:
-1. Check if it contains ANY animal products (meat, seafood, dairy, eggs, animal-derived ingredients)
-2. If it's a compound ingredient (e.g., "chicken broth"), mark it as NotAllowed
-3. If it's ambiguous (e.g., "broth" without specification), mark as Ambiguous
-4. For NotAllowed ingredients, provide 2-3 specific vegan/plant-based substitute suggestions
-
-Return STRICT JSON:
-[
-  { 
-    "ingredient": "", 
-    "allowed": "Allowed|NotAllowed|Ambiguous", 
-    "reason": "Brief explanation",
-    "suggestions": []
-  }
-]
-
-Be strict: When in doubt about animal products, mark as NotAllowed or Ambiguous.
-For "NotAllowed" ingredients, include at least 2-3 substitute suggestions in the suggestions array.
-`;
-
-  try {
-    const response = await getClient().chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: "system", content: `You are a strict dietary restriction analyzer for ${dietLevel} diets. You must identify ALL animal products including meat, seafood, dairy, eggs, and animal-derived ingredients. Be thorough and strict. Return only valid JSON arrays.` },
-        { role: "user", content: prompt }
-      ],
-    });
-
-    return dietaryAnalysis(ingredientTags, response.choices?.[0]?.message?.content);
-  } catch {
-    return dietaryAnalysis(ingredientTags, null);
-  }
-}
+export const isAllowedForUser = createDietaryService(request =>
+  getClient().chat.completions.create({ model: MODEL, ...request }));
 
 //
 // 4. Answer with context
