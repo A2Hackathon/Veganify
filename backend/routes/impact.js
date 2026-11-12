@@ -42,27 +42,29 @@ router.post("/log-meal", async (req, res) => {
       });
     }
 
-    const today = new Date();
-    const last = impact.last_activity_date
-      ? new Date(impact.last_activity_date)
-      : null;
+    impact = await UserImpactStorage.update(user._id, impact => {
+      const today = new Date();
+      const last = impact.last_activity_date
+        ? new Date(impact.last_activity_date)
+        : null;
 
-    // Streaks use UTC dates so host timezone and daylight-saving changes do not affect them.
-    const dayMs = 24 * 60 * 60 * 1000;
-    const dayDifference = last
-      ? Math.floor(today.getTime() / dayMs) - Math.floor(last.getTime() / dayMs)
-      : NaN;
-    if (dayDifference === 1) {
-      impact.streak_days += 1;
-    } else if (dayDifference !== 0) {
-      // First activity, a missed day, or an invalid/future stored timestamp starts a new streak.
-      impact.streak_days = 1;
-    }
+      // Streaks use UTC dates so host timezone and daylight-saving changes do not affect them.
+      const dayMs = 24 * 60 * 60 * 1000;
+      const dayDifference = last
+        ? Math.floor(today.getTime() / dayMs) - Math.floor(last.getTime() / dayMs)
+        : NaN;
+      if (dayDifference === 1) {
+        impact.streak_days += 1;
+      } else if (dayDifference !== 0) {
+        // First activity, a missed day, or an invalid/future stored timestamp starts a new streak.
+        impact.streak_days = 1;
+      }
 
-    impact.total_meals_logged += 1;
-    impact.xp += 10;
-    impact.last_activity_date = today;
-    await UserImpactStorage.save(impact);
+      impact.total_meals_logged += 1;
+      impact.xp += 10;
+      impact.last_activity_date = today;
+
+    });
 
     const xp = impact.xp;
     const coins = impact.coins;

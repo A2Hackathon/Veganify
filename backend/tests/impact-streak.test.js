@@ -11,7 +11,7 @@ test('meal streaks use UTC calendar dates, not elapsed 24-hour periods', async t
   let saved;
   t.mock.method(UserStorage, 'findOne', async () => ({ _id: 'fixture' }));
   t.mock.method(UserImpactStorage, 'findOne', async () => impact);
-  t.mock.method(UserImpactStorage, 'save', async value => { saved = structuredClone(value); });
+  t.mock.method(UserImpactStorage, 'update', async (_, mutate) => { mutate(impact); saved = structuredClone(impact); return impact; });
   const app = express();
   app.use(express.json());
   app.use('/impact', impactRouter);

@@ -130,3 +130,18 @@ test('concurrent impact initialization reuses one record and preserves saved pro
   const other = await storage.UserImpactStorage.create({ user_id: 'other' });
   assert.notEqual(other._id, restored._id);
 });
+
+test('failed impact mutation leaves persisted progress unchanged', async t => {
+  const { storage, root } = await fixture(t);
+  await storage.UserImpactStorage.create({ user_id: 'u', xp: 90 });
+  const file = join(root, 'data', 'userImpact.json');
+  const before = fs.readFileSync(file, 'utf8');
+  await assert.rejects(storage.UserImpactStorage.update('u', impact => { impact.xp = 100; throw new Error('mutation failed'); }), /mutation failed/);
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+  const stub = t.mock.method(fs, 'renameSync', () => { throw new Error('replacement failed'); });
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(storage.UserImpactStorage.update('u', impact => { impact.xp = 100; }), /replacement failed/);
+  } finally { stub.mock.restore(); syncBuiltinESMExports(); }
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+});
