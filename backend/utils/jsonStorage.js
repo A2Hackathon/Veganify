@@ -86,22 +86,9 @@ export const UserStorage = {
   async create(userData) {
     const users = readJSON(USERS_FILE);
     
-    // ENFORCE SINGLE USER: If any user exists, update the first one instead of creating new
-    if (users.length > 0) {
-      console.log("⚠️ User already exists. Updating existing user instead of creating new one.");
-      const existingUser = users[0];
-      const updatedUser = {
-        ...existingUser,
-        ...userData,
-        _id: existingUser._id, // Keep existing ID
-        id: existingUser._id || existingUser.id, // Keep existing ID
-        sproutName: "Albert", // Always Albert
-      };
-      users[0] = updatedUser;
-      writeJSON(USERS_FILE, users);
-      return updatedUser;
-    }
-    
+    // Initialization retries must not overwrite an existing profile with defaults.
+    if (users.length > 0) return users[0];
+
     // Only create if no users exist
     const newUser = {
       _id: generateId(),

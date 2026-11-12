@@ -145,3 +145,16 @@ test('failed impact mutation leaves persisted progress unchanged', async t => {
   } finally { stub.mock.restore(); syncBuiltinESMExports(); }
   assert.equal(fs.readFileSync(file, 'utf8'), before);
 });
+
+test('shared-user initialization retries preserve existing preferences and identity', async t => {
+  const { storage, root, modulePath } = await fixture(t);
+  const user = await storage.UserStorage.create({ name: 'Custom', sproutName: 'Albert', dietLevel: 'pescatarian', extraForbiddenTags: ['peanuts'] });
+  const file = join(root, 'data', 'users.json');
+  const before = fs.readFileSync(file, 'utf8');
+  const retries = await Promise.all(Array.from({ length: 20 }, () => storage.UserStorage.create({ name: 'User', dietLevel: 'vegan', extraForbiddenTags: [] })));
+  for (const result of retries) assert.deepEqual(result, user);
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+  const script = `const s = await import(${JSON.stringify(pathToFileURL(modulePath).href)}); console.log(JSON.stringify(await s.UserStorage.create({name:'User'})));`;
+  assert.deepEqual(JSON.parse(execFileSync(process.execPath, ['--input-type=module','-e',script], {encoding:'utf8'})), user);
+  assert.equal(await storage.UserStorage.countDocuments(), 1);
+});
