@@ -1,7 +1,7 @@
 import { createDietaryService } from "./dietaryService.js";
 import OpenAI from "openai";
 import { createAnswerService } from "./answerService.js";
-import { generatedRecipes } from "./modelResults.js";
+import { createGenerationService } from "./generationService.js";
 import { extractedIngredients, rewrittenRecipe } from "./recipeResults.js";
 
 import { createModelClient } from "./modelClient.js";
@@ -113,40 +113,5 @@ export const answerWithContext = createAnswerService(request =>
 //
 // 5. Generate vegan recipes
 //
-export async function generateRecipes(ingredients, count = 3) {
-  const prompt = `
-Generate ${count} VEGAN recipes using these ingredients:
-
-${ingredients.join(", ")}
-
-Return STRICT JSON array:
-[
-  {
-    "title": "",
-    "tags": [],
-    "duration": "",
-    "ingredients": [
-      { "name": "", "amount": "", "unit": "" }
-    ],
-    "steps": []
-  }
-]
-`;
-
-  try {
-    const response = await getClient().chat.completions.create({
-      model: MODEL,
-      messages: [
-        {
-          role: "system",
-          content: "Generate vegan recipes in strict JSON format.",
-        },
-        { role: "user", content: prompt },
-      ],
-    });
-
-    return generatedRecipes(response.choices?.[0]?.message?.content, count);
-  } catch {
-    throw new Error("Recipe generation unavailable");
-  }
-}
+export const generateRecipes = createGenerationService(request =>
+  getClient().chat.completions.create({model: MODEL, ...request}));

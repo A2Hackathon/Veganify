@@ -49,7 +49,7 @@ router.post("/generate", async (req, res) => {
     try { ingredientsList = parseIngredients({ ingredients: ingredientsList }); }
     catch { return res.status(400).json({ error: "Grocery ingredients exceed recipe generation limits or contain invalid names" }); }
 
-    const generated = await generateRecipes(ingredientsList, 3);
+    const generated = await generateRecipes(ingredientsList, 3, user);
 
     const stored = await RecipeStorage.createMany(generated.map(r => ({
         userId: user._id,
