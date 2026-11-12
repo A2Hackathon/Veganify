@@ -45,3 +45,15 @@ test('provider failures and incomplete output preserve uncertainty', async () =>
     assert.ok(rows.every(row => row.allowed === 'Ambiguous'));
   }
 });
+
+test('chat instructions use the selected diet and prioritize additional restrictions', async () => {
+  const { createAnswerService } = await import('../utils/answerService.js');
+  let request;
+  const answer = createAnswerService(async value => { request = value; return { choices: [{ message: { content: 'fixture answer' } }] }; });
+  assert.equal(await answer({ user: { dietLevel: 'pescatarian', extraForbiddenTags: ['peanuts'] } }, 'What can I cook?'), 'fixture answer');
+  assert.match(request.messages[0].content, /Fish, seafood, eggs and dairy are permitted/);
+  assert.match(request.messages[0].content, /Additional restrictions override/);
+  assert.match(request.messages[1].content, /peanuts/);
+  await answer({ user: { dietLevel: 'ovo' } }, 'Any tips?');
+  assert.match(request.messages[0].content, /Eggs are permitted/);
+});

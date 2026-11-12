@@ -11,11 +11,15 @@ const policies = new Map([
   ['flexitarian', 'No categorical animal-product exclusion. Prefer plant-based options, but do not reject an ingredient solely because it is animal-derived.'],
 ]);
 
+export function dietaryPolicyFor(dietLevel) {
+  return typeof dietLevel === 'string' ? policies.get(dietLevel.toLowerCase()) : undefined;
+}
+
 export function createDietaryService(complete) {
   return async function analyze(userPrefs, ingredientTags) {
     try {
       const dietLevel = userPrefs.dietLevel ?? 'vegan';
-      const policy = typeof dietLevel === 'string' ? policies.get(dietLevel.toLowerCase()) : undefined;
+      const policy = dietaryPolicyFor(dietLevel);
       const restrictions = userPrefs.extraForbiddenTags ?? [];
       if (!policy || !Array.isArray(restrictions) || restrictions.length > 100 ||
           restrictions.some(value => typeof value !== 'string' || !value.trim() || value.length > 200) ||
