@@ -7,11 +7,13 @@ async function withMenu(run) {
   let text = 'rice\nmilk';
   let answer = '[]';
   let calls = 0;
+  let context;
+  let user = { dietLevel: 'vegan' };
   const app = express();
   app.use(createScanMenuRouter({
-    users: { findOne: async () => ({dietLevel: 'vegan'}) },
+    users: { findOne: async () => user },
     recognize: async () => ({data: {text}}),
-    analyze: async () => { calls++; return answer; },
+    analyze: async ctx => { calls++; context = ctx; return answer; },
   }));
   const server = app.listen(0, '127.0.0.1');
   await new Promise(resolve => server.once('listening', resolve));
@@ -21,7 +23,7 @@ async function withMenu(run) {
     const response = await fetch(`http://127.0.0.1:${server.address().port}`, {method: 'POST', body: form});
     return {status: response.status, body: await response.json()};
   }
-  try { await run({post, setAnswer: value => {answer = value;}, setText: value => {text = value;}, calls: () => calls}); }
+  try { await run({post, setAnswer: value => {answer = value;}, setText: value => {text = value;}, calls: () => calls, context: () => context, setUser: value => { user = value; }}); }
   finally { await new Promise(resolve => server.close(resolve)); }
 }
 const row = (name, status = 'suitable') => ({name, status, modificationSuggestion: ''});
@@ -55,4 +57,13 @@ test('empty or excessive OCR never invokes menu analysis', () => withMenu(async 
     assert.equal(result.status, 422);
   }
   assert.equal(calls(), 0);
+}));
+
+
+test('menu analysis receives the saved diet and additional restrictions', () => withMenu(async ({post, setAnswer, setUser, context}) => {
+  setUser({ dietLevel: 'pescatarian', extraForbiddenTags: ['peanuts'], preferredCuisines: ['Chinese'], cookingStylePreferences: ['Spicy'] });
+  setAnswer(JSON.stringify([row('rice'), row('milk')]));
+  assert.equal((await post()).status, 200);
+  assert.equal(context().user.dietLevel, 'pescatarian');
+  assert.deepEqual(context().user.extraForbiddenTags, ['peanuts']);
 }));
