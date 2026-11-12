@@ -45,7 +45,12 @@ export function createScanMenuRouter({ users, recognize, analyze }) {
   ]
   `;
 
-      const ctx = {};
+      const ctx = { user: {
+        dietLevel: user.dietLevel,
+        extraForbiddenTags: user.extraForbiddenTags || [],
+        preferredCuisines: user.preferredCuisines || [],
+        cookingStylePreferences: user.cookingStylePreferences || [],
+      } };
       const answer = await analyze(ctx, prompt);
 
       const resultDishes = parseMenuAnalysis(dishes, answer);
