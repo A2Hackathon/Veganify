@@ -16,6 +16,10 @@ export async function getUserContext(userId) {
     });
   }
   
+  const dietLevel = typeof user.dietLevel === "string" ? user.dietLevel.toLowerCase() : null;
+  if (!["vegan", "ovo", "lacto", "lacto_ovo", "vegetarian", "pescatarian", "flexitarian"].includes(dietLevel)) {
+    throw new Error("Stored dietary preference is missing or unsupported");
+  }
   const userObjectId = user._id;
   
   const impact = await UserImpactStorage.findOne({ user_id: userObjectId });
@@ -23,7 +27,7 @@ export async function getUserContext(userId) {
 
   return {
     user: {
-      dietLevel: (user?.dietLevel || "flexitarian").toLowerCase(),
+      dietLevel: dietLevel,
       extraForbiddenTags: user?.extraForbiddenTags || [],
       preferredCuisines: user?.preferredCuisines || [],
       cookingStylePreferences: user?.cookingStylePreferences || [],
