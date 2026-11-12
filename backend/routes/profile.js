@@ -1,5 +1,5 @@
 import express from "express";
-import { eatingStyleToDietLevel } from "../utils/dietMapping.js";
+import { validateProfileInput } from "../utils/profileInput.js";
 import { UserStorage, UserImpactStorage } from "../utils/jsonStorage.js";
 
 const router = express.Router();
@@ -119,8 +119,8 @@ router.get("/", async (req, res) => {
 router.patch("/", async (req, res) => {
   let requestedDiet;
   try {
-    if (req.body && Object.hasOwn(req.body, 'eatingStyle')) requestedDiet = eatingStyleToDietLevel(req.body.eatingStyle);
-  } catch { return res.status(400).json({ error: "Provide a supported eatingStyle" }); }
+    requestedDiet = validateProfileInput(req.body);
+  } catch { return res.status(400).json({ error: "Provide a valid id and bounded profile fields" }); }
   try {
     const profile = req.body;
     const userId = profile.id;

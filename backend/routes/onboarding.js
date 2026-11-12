@@ -1,13 +1,13 @@
 import express from "express";
-import { eatingStyleToDietLevel } from "../utils/dietMapping.js";
+import { validateProfileInput } from "../utils/profileInput.js";
 import { UserStorage, UserImpactStorage } from "../utils/jsonStorage.js";
 
 const router = express.Router();
 
 router.post("/profile", async (req, res) => {
   let dietLevel;
-  try { dietLevel = eatingStyleToDietLevel(req.body?.eatingStyle); }
-  catch { return res.status(400).json({ error: "Provide a supported eatingStyle" }); }
+  try { dietLevel = validateProfileInput(req.body, { onboarding: true }); }
+  catch { return res.status(400).json({ error: "Provide a supported eatingStyle and valid bounded profile fields" }); }
   try {
     const {
       eatingStyle,
