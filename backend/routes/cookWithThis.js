@@ -45,7 +45,7 @@ router.post("/", async (req, res, next) => {
 
     // generate 3 recipes
     console.log("?îç Calling LLM (generateRecipes) for 'Cook With This' feature...");
-    const recipes = await generateRecipes(ingredients, 3);
+    const recipes = await generateRecipes(ingredients, 3, user);
     console.log("??LLM generated", recipes?.length || 0, "recipes");
 
     let progress = null;
