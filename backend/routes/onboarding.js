@@ -37,18 +37,23 @@ router.post("/profile", async (req, res) => {
       });
     }
 
+    let impact;
     try {
-      await UserImpactStorage.create({
-        user_id: user._id,
-        xp: 0,
-        coins: 0,
-        streak_days: 0,
-        total_meals_logged: 0,
-        forest_stage: "SEED",
-      });
+      impact = await UserImpactStorage.findOne({ user_id: user._id });
+      if (!impact) {
+        impact = await UserImpactStorage.create({
+          user_id: user._id,
+          xp: 0,
+          coins: 0,
+          streak_days: 0,
+          total_meals_logged: 0,
+          forest_stage: "SEED",
+        });
+      }
     } catch {
       console.error("Failed to create UserImpact (non-critical):");
     }
+    const xp = impact?.xp || 0;
 
     const profile = {
       id: user._id || user.id,
@@ -58,11 +63,11 @@ router.post("/profile", async (req, res) => {
       cuisinePreferences: user.preferredCuisines || [],
       cookingStylePreferences: user.cookingStylePreferences || [],
       sproutName: user.sproutName || "Albert",
-      level: 1,
-      xp: 0,
-      xpToNextLevel: 100,
-      coins: 0,
-      streakDays: 0,
+      level: Math.floor(xp / 100) + 1,
+      xp,
+      xpToNextLevel: 100 - (xp % 100),
+      coins: impact?.coins || 0,
+      streakDays: impact?.streak_days || 0,
     };
 
     res.json(profile);
