@@ -171,6 +171,17 @@ export const UserImpactStorage = {
     return newImpact;
   },
 
+  async update(userId, mutate) {
+    const impacts = readJSON(USER_IMPACT_FILE);
+    const impact = impacts.find(row => row.user_id?.toString() === userId?.toString());
+    if (!impact) throw new Error("Impact record not found");
+    // No await between reading the current record and publishing its replacement.
+    const result = mutate(impact);
+    if (result && typeof result.then === "function") throw new Error("Impact mutation must be synchronous");
+    writeJSON(USER_IMPACT_FILE, impacts);
+    return impact;
+  },
+
   async save(impact) {
     const impacts = readJSON(USER_IMPACT_FILE);
     const index = impacts.findIndex(i => i._id === impact._id || i.user_id === impact.user_id);
