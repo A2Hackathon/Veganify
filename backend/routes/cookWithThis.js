@@ -70,16 +70,16 @@ router.post("/", async (req, res, next) => {
 
       // Award XP for using "Cook With This"
       const xpAward = 5;
-      impact.xp += xpAward;
+      impact = await UserImpactStorage.update(userObjectId, current => {
+        current.xp += xpAward;
 
-      // Recalculate forest stage
-      if (impact.xp < 50) impact.forest_stage = "SEED";
-      else if (impact.xp < 200) impact.forest_stage = "SPROUT";
-      else if (impact.xp < 500) impact.forest_stage = "SAPLING";
-      else if (impact.xp < 1500) impact.forest_stage = "FOREST";
-      else impact.forest_stage = "ANCIENT_FOREST";
-
-      await UserImpactStorage.save(impact);
+        // Recalculate forest stage
+        if (current.xp < 50) current.forest_stage = "SEED";
+        else if (current.xp < 200) current.forest_stage = "SPROUT";
+        else if (current.xp < 500) current.forest_stage = "SAPLING";
+        else if (current.xp < 1500) current.forest_stage = "FOREST";
+        else current.forest_stage = "ANCIENT_FOREST";
+      });
 
       progress = {
         xp: impact.xp,
