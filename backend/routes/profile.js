@@ -1,5 +1,5 @@
 import express from "express";
-import { validateProfileInput } from "../utils/profileInput.js";
+import { validateProfileInput, validateProfileQuery, parseRestrictions } from "../utils/profileInput.js";
 import { UserStorage, UserImpactStorage } from "../utils/jsonStorage.js";
 
 const router = express.Router();
@@ -32,6 +32,8 @@ function dietLevelToEatingStyle(d) {
 
 // GET /profile?userId=...
 router.get("/", async (req, res) => {
+  try { validateProfileQuery(req.query); }
+  catch { return res.status(400).json({ error: "Provide one userId containing 1–128 characters" }); }
   try {
     const userId = req.query.userId;
     if (!userId) return res.status(400).json({ error: "userId required" });
@@ -187,21 +189,11 @@ router.patch("/", async (req, res) => {
 });
 
 // POST /profile/parse-restrictions
-router.post("/parse-restrictions", async (req, res) => {
+router.post("/parse-restrictions", (req, res) => {
   try {
-    const { text } = req.body;
-    if (!text) return res.status(400).json({ error: "text required" });
-
-    // simple placeholder: split by comma or newline
-    const restrictions = text
-      .split(/[\n,]/)
-      .map((x) => x.trim())
-      .filter(Boolean);
-
-    res.json({ restrictions });
+    res.json({ restrictions: parseRestrictions(req.body) });
   } catch {
-    console.error("parse-restrictions error:");
-    res.status(500).json({ error: "Failed to parse restrictions" });
+    res.status(400).json({ error: "Provide restriction text up to 8000 characters with 1–100 comma or newline-separated entries, each up to 200 characters" });
   }
 });
 

@@ -20,3 +20,16 @@ export function validateProfileInput(body, { onboarding = false } = {}) {
   }
   return onboarding || Object.hasOwn(body, 'eatingStyle') ? eatingStyleToDietLevel(body.eatingStyle) : undefined;
 }
+
+export function validateProfileQuery(query) {
+  boundedText(query.userId, 128);
+}
+
+export function parseRestrictions(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid restrictions request');
+  boundedText(body.text, 8000);
+  const restrictions = body.text.split(/[\n,]/).map(value => value.trim()).filter(Boolean);
+  if (!restrictions.length || restrictions.length > 100) throw new Error('Invalid restriction count');
+  for (const restriction of restrictions) boundedText(restriction, 200);
+  return restrictions;
+}
