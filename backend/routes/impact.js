@@ -77,8 +77,8 @@ router.post("/log-meal", async (req, res) => {
       xpToNextLevel,
       total_meals_logged: impact.total_meals_logged,
     });
-  } catch (err) {
-    console.error("log-meal error:", err);
+  } catch {
+    console.error("Failed to log meal");
     res.status(500).json({ error: "Failed to log meal" });
   }
 });
