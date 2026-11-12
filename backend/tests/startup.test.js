@@ -50,9 +50,9 @@ test('clean application starts without credentials or network address discovery'
     assert.equal(invalidJSON.status, 400);
     assert.deepEqual(await invalidJSON.json(), {error:'Invalid JSON body'});
 
-    for (const [path, body] of [
+    for (const [path, body, expectedStatus = 500] of [
       ['/recipes/generate', {userId: 'demo', ingredients: ['rice']}],
-      ['/recipes/from-ingredients', {user_id: 'demo'}],
+      ['/recipes/from-ingredients', {user_id: 'demo'}, 400],
       ['/recipes/veganize/analyze', {userId: 'demo', recipeText: 'Cook milk and rice.'}],
       ['/recipes/veganize/commit', {recipeText: 'Cook milk and rice.', substitutions: []}],
       ['/recipes/veganize', {userId: 'demo', inputText: 'Cook milk and rice.'}],
@@ -60,7 +60,7 @@ test('clean application starts without credentials or network address discovery'
       const response = await fetch(`http://127.0.0.1:${port}${path}`, {
         method: 'POST', headers: {'Content-Type':'application/json', Authorization:'Bearer test-only-token-0123456789abcdef0123456789'}, body: JSON.stringify(body),
       });
-      assert.equal(response.status, 500, path);
+      assert.equal(response.status, expectedStatus, path);
       assert.equal((await response.json()).success, undefined);
     }
     const chat = await fetch(`http://127.0.0.1:${port}/ai/ask`, {

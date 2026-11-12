@@ -9,7 +9,7 @@ test('concurrent cooking and meal awards preserve progress across restart', asyn
   const root = fs.mkdtempSync(new URL('../cook-fixture-', import.meta.url));
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   for (const dir of ['routes', 'utils']) fs.mkdirSync(join(root, dir));
-  for (const file of ['routes/cookWithThis.js', 'routes/impact.js', 'utils/jsonStorage.js']) {
+  for (const file of ['routes/cookWithThis.js', 'routes/impact.js', 'utils/jsonStorage.js', 'utils/scanResults.js']) {
     fs.copyFileSync(new URL('../' + file, import.meta.url), join(root, file));
   }
   fs.writeFileSync(join(root, 'utils/llmClient.js'), `
@@ -21,8 +21,9 @@ test('concurrent cooking and meal awards preserve progress across restart', asyn
     }
   `);
   const storageUrl = pathToFileURL(join(root, 'utils/jsonStorage.js')).href;
-  const {UserStorage, UserImpactStorage} = await import(storageUrl);
+  const {UserStorage, UserImpactStorage, GroceryItemStorage} = await import(storageUrl);
   const user = await UserStorage.create({sproutName: 'Albert'});
+  await GroceryItemStorage.create({userId: user._id, name: 'rice'});
   await UserImpactStorage.create({user_id: user._id, xp: 90, total_meals_logged: 9, coins: 7});
   async function handler(file, path) {
     const {default: router} = await import(pathToFileURL(join(root, 'routes', file)).href);

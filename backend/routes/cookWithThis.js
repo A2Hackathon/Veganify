@@ -1,5 +1,6 @@
 // routes/cookWithThis.js (Albert, updated to match new impact system)
 import express from "express";
+import { parseIngredients } from "../utils/scanResults.js";
 import { generateRecipes } from "../utils/llmClient.js";
 import { UserImpactStorage, GroceryItemStorage } from "../utils/jsonStorage.js";
 const router = express.Router();
@@ -41,7 +42,9 @@ router.post("/", async (req, res, next) => {
     const groceries = await GroceryItemStorage.find({ userId: user._id });
 
     // Convert to ingredient names
-    const ingredients = groceries.map(g => g.name);
+    let ingredients;
+    try { ingredients = parseIngredients({ ingredients: groceries.map(g => g.name) }); }
+    catch { return res.status(400).json({ error: "Add 1 to 100 valid grocery names (200 characters each, 8000 total) before generating recipes" }); }
 
     // generate 3 recipes
     console.log("?îç Calling LLM (generateRecipes) for 'Cook With This' feature...");
