@@ -111,3 +111,22 @@ test('recipe batch is all-or-nothing on write failure and persists together afte
   }
   assert.equal((await storage.RecipeStorage.find({})).length, 4);
 });
+
+test('concurrent impact initialization reuses one record and preserves saved progress after restart', async t => {
+  const { storage, root, modulePath } = await fixture(t);
+  const results = await Promise.all(Array.from({ length: 20 }, async () => {
+    const existing = await storage.UserImpactStorage.findOne({ user_id: 'u' });
+    return existing || storage.UserImpactStorage.create({ user_id: 'u', xp: 0 });
+  }));
+  assert.equal(new Set(results.map(row => row._id)).size, 1);
+  await storage.UserImpactStorage.save({ ...results[0], xp: 250, coins: 17 });
+  const before = fs.readFileSync(join(root, 'data', 'userImpact.json'), 'utf8');
+  const script = `const s = await import(${JSON.stringify(pathToFileURL(modulePath).href)});
+    console.log(JSON.stringify(await s.UserImpactStorage.create({user_id:'u',xp:0})));`;
+  const restored = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], { encoding: 'utf8' }));
+  assert.equal(restored._id, results[0]._id);
+  assert.equal(restored.xp, 250); assert.equal(restored.coins, 17);
+  assert.equal(fs.readFileSync(join(root, 'data', 'userImpact.json'), 'utf8'), before);
+  const other = await storage.UserImpactStorage.create({ user_id: 'other' });
+  assert.notEqual(other._id, restored._id);
+});
