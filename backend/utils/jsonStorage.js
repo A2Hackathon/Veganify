@@ -152,9 +152,13 @@ export const UserImpactStorage = {
 
   async create(impactData) {
     const impacts = readJSON(USER_IMPACT_FILE);
+    const userId = impactData.user_id?.toString() || impactData.user_id;
+    // Keep lookup and insertion synchronous so requests in this process cannot interleave.
+    const existing = impacts.find(impact => impact.user_id?.toString() === userId);
+    if (existing) return existing;
     const newImpact = {
       _id: generateId(),
-      user_id: impactData.user_id?.toString() || impactData.user_id,
+      user_id: userId,
       xp: impactData.xp || 0,
       coins: impactData.coins || 0,
       streak_days: impactData.streak_days || 0,
