@@ -2,7 +2,8 @@ import { createDietaryService } from "./dietaryService.js";
 import OpenAI from "openai";
 import { createAnswerService } from "./answerService.js";
 import { createGenerationService } from "./generationService.js";
-import { extractedIngredients, rewrittenRecipe } from "./recipeResults.js";
+import { createRewriteService } from "./rewriteService.js";
+import { extractedIngredients } from "./recipeResults.js";
 
 import { createModelClient } from "./modelClient.js";
 
@@ -58,45 +59,8 @@ ${recipeText}
 //
 // 2. Rewrite recipe steps with substitutions
 //
-export async function rewriteRecipeSteps(subs, originalRecipe) {
-  let instructions = subs
-    .filter((s) => s.substitute)
-    .map((s) => `- Replace "${s.original}" with "${s.substitute}".`)
-    .join("\n");
-
-  const prompt = `
-You are rewriting a cooking recipe.
-
-Substitutions (apply all):
-${instructions || "- No substitutions listed."}
-
-Original Recipe:
-"""
-${originalRecipe}
-"""
-
-Rules:
-- Keep the original structure of the recipe (steps / paragraphs).
-- Just swap ingredients and adjust wording where needed.
-- Do NOT add explanations or notes.
-- Return ONLY the rewritten recipe text, nothing else.
-`;
-
-  try {
-    const response = await getClient().chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: "system", content: "Rewrite recipes using substitutions." },
-        { role: "user", content: prompt },
-      ],
-    });
-
-    return rewrittenRecipe(response.choices?.[0]?.message?.content);
-  } catch {
-    // Never save the original recipe as a successful adaptation after failure.
-    throw new Error("Recipe rewrite unavailable");
-  }
-}
+export const rewriteRecipeSteps = createRewriteService(request =>
+  getClient().chat.completions.create({model: MODEL, ...request}));
 
 //
 // 3. Dietary check

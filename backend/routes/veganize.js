@@ -85,19 +85,13 @@ router.post("/commit", async (req, res) => {
   try {
     const { userId: actualUserId, recipeContent, subs, originalPrompt } = input;
 
-    // userId is optional in commit route, but preferred if provided
-    let user = null;
-    if (actualUserId) {
-      if (actualUserId === "ALBERT_SHARED_USER") {
-        user = await UserStorage.findOne({ sproutName: "Albert" });
-        if (!user) return res.status(404).json({ error: "Albert user not found" });
-      } else {
-        user = await UserStorage.findById(actualUserId);
-        if (!user) return res.status(404).json({ error: "User not found" });
-      }
-    }
+    // The demo's shared profile supplies restrictions when the client omits an ID.
+    const user = !actualUserId || actualUserId === "ALBERT_SHARED_USER"
+      ? await UserStorage.findOne({ sproutName: "Albert" })
+      : await UserStorage.findById(actualUserId);
+    if (!user) return res.status(404).json({ error: "User not found" });
 
-    const rewritten = await rewriteRecipeSteps(subs, recipeContent);
+    const rewritten = await rewriteRecipeSteps(subs, recipeContent, user);
 
     // simple split of steps by line
     const steps = rewritten
