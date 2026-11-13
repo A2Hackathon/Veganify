@@ -175,7 +175,7 @@ router.post("/veganize", async (req, res) => {
     }
 
     // Rewrite recipe
-    const rewritten = await rewriteRecipeSteps(adaptedIngredients, inputText);
+    const rewritten = await rewriteRecipeSteps(adaptedIngredients, inputText, user);
 
     // Convert to steps array
     const steps = rewritten
