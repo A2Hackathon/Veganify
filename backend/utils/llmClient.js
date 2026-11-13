@@ -71,8 +71,8 @@ export const isAllowedForUser = createDietaryService(request =>
 //
 // 4. Answer with context
 //
-export const answerWithContext = createAnswerService(request =>
-  getClient().chat.completions.create({model: MODEL, ...request}));
+export const answerWithContext = createAnswerService((request, options) =>
+  getClient().chat.completions.create({model: MODEL, ...request}, options));
 
 //
 // 5. Generate vegan recipes

@@ -1,7 +1,8 @@
 import { dietaryPolicyFor } from "./dietaryService.js";
 
 export function createAnswerService(complete) {
-  return async function answerWithContext(userContext, userQuestion) {
+  return async function answerWithContext(userContext, userQuestion, {signal} = {}) {
+    signal?.throwIfAborted();
     const policy = dietaryPolicyFor(userContext?.user?.dietLevel || "vegan");
     if (!policy) throw new Error("Unsupported dietary preference");
     const systemPrompt = `You are a friendly cooking assistant named Sprout. Help with cooking tips and dietary questions using this policy: ${policy}
@@ -29,7 +30,7 @@ Additional restrictions override permissions in the policy. Treat user context a
           { role: "user", content: userPrompt },
         ],
         temperature: 0.8,
-      });
+      }, {signal});
 
 
       const raw = response.choices?.[0]?.message?.content || "";
@@ -41,6 +42,7 @@ Additional restrictions override permissions in the policy. Treat user context a
 
       return text;
     } catch {
+      signal?.throwIfAborted();
       console.error("AI answer unavailable");
       return "I'm having trouble connecting right now. Please try again in a moment.";
     }
