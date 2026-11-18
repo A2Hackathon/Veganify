@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -25,9 +26,9 @@ test('cooking rejects invalid grocery lists before inference or progress writes'
   t.mock.method(storage.GroceryItemStorage, 'find', async () => items.map(name => ({name})));
   async function request() {
     let status = 200;
-    await cook({body: {user_id: user._id}}, {
+    await cook(Object.assign(new EventEmitter(), {body: {user_id: user._id}}), Object.assign(new EventEmitter(), {
       status(code) { status = code; return this; }, json() {},
-    }, error => { throw error; });
+    }), error => { throw error; });
     return status;
   }
   for (const names of [[], [null], [' '], ['x'.repeat(201)], Array(101).fill('rice'), Array(41).fill('x'.repeat(200))]) {

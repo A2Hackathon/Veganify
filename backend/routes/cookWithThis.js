@@ -16,7 +16,13 @@ const router = express.Router();
  */
 
 router.post("/", async (req, res, next) => {
+  const controller = new AbortController();
+  const cancel = () => { if (!res.writableFinished) controller.abort(); };
+  req.once('aborted', cancel);
+  res.once('close', cancel);
+  if (req.aborted || res.destroyed) controller.abort();
   try {
+    controller.signal.throwIfAborted();
     const { user_id } = req.body;
 
     if (!user_id) {
@@ -25,7 +31,9 @@ router.post("/", async (req, res, next) => {
 
     // ALWAYS use the single Albert user
     const { UserStorage } = await import("../utils/jsonStorage.js");
+    controller.signal.throwIfAborted();
     let user = await UserStorage.findOne({ sproutName: "Albert" });
+    controller.signal.throwIfAborted();
     if (!user) {
       // Create Albert if it doesn't exist
       user = await UserStorage.create({
@@ -38,8 +46,10 @@ router.post("/", async (req, res, next) => {
       });
     }
     
+    controller.signal.throwIfAborted();
     // Get all groceries for Albert
     const groceries = await GroceryItemStorage.find({ userId: user._id });
+    controller.signal.throwIfAborted();
 
     // Convert to ingredient names
     let ingredients;
@@ -48,7 +58,8 @@ router.post("/", async (req, res, next) => {
 
     // generate 3 recipes
     console.log("?” Calling LLM (generateRecipes) for 'Cook With This' feature...");
-    const recipes = await generateRecipes(ingredients, 3, user);
+    const recipes = await generateRecipes(ingredients, 3, user, {signal: controller.signal});
+    controller.signal.throwIfAborted();
     console.log("??LLM generated", recipes?.length || 0, "recipes");
 
     let progress = null;
@@ -59,6 +70,7 @@ router.post("/", async (req, res, next) => {
 
       // find or create UserImpact (ensure required structure)
       let impact = await UserImpactStorage.findOne({ user_id: userObjectId });
+      controller.signal.throwIfAborted();
 
       if (!impact) {
         impact = await UserImpactStorage.create({
@@ -71,6 +83,7 @@ router.post("/", async (req, res, next) => {
         });
       }
 
+      controller.signal.throwIfAborted();
       // Award XP for using "Cook With This"
       const xpAward = 5;
       impact = await UserImpactStorage.update(userObjectId, current => {
@@ -90,9 +103,14 @@ router.post("/", async (req, res, next) => {
       };
     }
 
+    controller.signal.throwIfAborted();
     res.json({ recipes, progress });
   } catch (err) {
+    if (controller.signal.aborted) return;
     next(err);
+  } finally {
+    req.removeListener('aborted', cancel);
+    res.removeListener('close', cancel);
   }
 });
 
