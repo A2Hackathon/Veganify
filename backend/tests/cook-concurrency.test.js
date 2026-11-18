@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -33,9 +34,11 @@ test('concurrent cooking and meal awards preserve progress across restart', asyn
   const meal = await handler('impact.js', '/log-meal');
   const responses = [];
   const res = {json: body => responses.push(body), status: code => assert.fail(`Unexpected status ${code}`)};
+  const cookRequest = () => Object.assign(new EventEmitter(), {body: {user_id: user._id}});
+  const cookResponse = () => Object.assign(new EventEmitter(), res);
   const next = error => { throw error; };
   await Promise.all(Array.from({length: 20}, () => [
-    cook({body: {user_id: user._id}}, res, next),
+    cook(cookRequest(), cookResponse(), next),
     meal({body: {userId: user._id}}, res, next),
   ]).flat());
   const saved = await UserImpactStorage.findOne({user_id: user._id});
@@ -50,6 +53,6 @@ test('concurrent cooking and meal awards preserve progress across restart', asyn
   assert.deepEqual(restored, saved);
   const {failGeneration} = await import(pathToFileURL(join(root, 'utils/llmClient.js')).href);
   failGeneration();
-  await assert.rejects(cook({body: {user_id: user._id}}, res, next), /controlled model failure/);
+  await assert.rejects(cook(cookRequest(), cookResponse(), next), /controlled model failure/);
   assert.deepEqual(await UserImpactStorage.findOne({user_id: user._id}), saved);
 });
