@@ -16,11 +16,18 @@ router.post("/analyze", async (req, res) => {
   let input;
   try { input = parseVeganizeRequest(req.body); }
   catch { return res.status(400).json({ error: "Invalid recipe adaptation request" }); }
+  const controller = new AbortController();
+  const cancel = () => { if (!res.writableFinished) controller.abort(); };
+  req.once('aborted', cancel);
+  res.once('close', cancel);
+  if (req.aborted || res.destroyed) controller.abort();
   try {
+    controller.signal.throwIfAborted();
     const { recipeContent } = input;
 
     // ALWAYS use the single Albert user
     let user = await UserStorage.findOne({ sproutName: "Albert" });
+    controller.signal.throwIfAborted();
     if (!user) {
       // Create Albert if it doesn't exist
       user = await UserStorage.create({
@@ -33,14 +40,17 @@ router.post("/analyze", async (req, res) => {
       });
     }
 
-    const ingredients = await extractIngredients(recipeContent);
+    controller.signal.throwIfAborted();
+    const ingredients = await extractIngredients(recipeContent, {signal: controller.signal});
+    controller.signal.throwIfAborted();
 
     const prefs = {
       dietLevel: user.dietLevel || "vegan",
       extraForbiddenTags: user.extraForbiddenTags || [],
     };
 
-    const checks = await isAllowedForUser(prefs, ingredients);
+    const checks = await isAllowedForUser(prefs, ingredients, {signal: controller.signal});
+    controller.signal.throwIfAborted();
 
     // Load substitutions config for suggestions
     const substitutions = JSON.parse(readFileSync(join(__dirname, "../config/substitutions.json"), "utf-8"));
@@ -72,8 +82,12 @@ router.post("/analyze", async (req, res) => {
       problematicIngredients: problematic,
     });
   } catch {
+    if (controller.signal.aborted) return;
     console.error("veganize analyze error:");
     res.status(500).json({ error: "Failed to analyze recipe" });
+  } finally {
+    req.removeListener('aborted', cancel);
+    res.removeListener('close', cancel);
   }
 });
 
