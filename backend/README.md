@@ -268,7 +268,7 @@ a new operation, so do not retry old operations beyond that window.
 This guarantee is limited to one server process using its persistent data volume.
 It does not provide cross-process locking or protection after data loss. Requests
 without a key retain the previous behavior and can award XP again on retry; the
-existing iOS caller does not yet retain and send a retry key. Recipe generation
+mobile retry-key integration is not included in this change. Recipe generation
 and Cook With This do not yet have idempotency receipts. Tests exercise concurrent
 route calls, replay after another award, restart in a child process, conflicts,
 invalid keys and bounded receipt retention; they do not establish mobile or
