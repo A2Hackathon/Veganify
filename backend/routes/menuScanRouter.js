@@ -7,11 +7,18 @@ export function createScanMenuRouter({ users, recognize, analyze }) {
 
   // POST /scan/menu (image, returns MenuDish[])
   router.post("/", imageUpload, async (req, res) => {
+    const controller = new AbortController();
+    const cancel = () => { if (!res.writableFinished) controller.abort(); };
+    req.once('aborted', cancel);
+    res.once('close', cancel);
+    if (req.aborted || res.destroyed) controller.abort();
     try {
+      controller.signal.throwIfAborted();
       if (!req.file) return res.status(400).json({ error: "image required" });
 
       // Existing single-profile demo; this is not multi-user isolation.
       let user = await users.findOne({ sproutName: "Albert" });
+      controller.signal.throwIfAborted();
       if (!user) {
         user = await users.create({
           name: "User",
@@ -23,7 +30,9 @@ export function createScanMenuRouter({ users, recognize, analyze }) {
         });
       }
 
+      controller.signal.throwIfAborted();
       const result = await recognize(req.file.buffer, { req, res });
+      controller.signal.throwIfAborted();
       const text = result.data.text || "";
 
       const dishes = [...new Set(text.split("\n").map(x => x.trim()).filter(Boolean))];
@@ -51,7 +60,8 @@ export function createScanMenuRouter({ users, recognize, analyze }) {
         preferredCuisines: user.preferredCuisines || [],
         cookingStylePreferences: user.cookingStylePreferences || [],
       } };
-      const answer = await analyze(ctx, prompt);
+      const answer = await analyze(ctx, prompt, {signal: controller.signal});
+      controller.signal.throwIfAborted();
 
       const resultDishes = parseMenuAnalysis(dishes, answer);
       if (!resultDishes) {
@@ -60,8 +70,12 @@ export function createScanMenuRouter({ users, recognize, analyze }) {
 
       res.json({ dishes: resultDishes });
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error("scan menu error:", err);
       res.status(err.status || 500).json({ error: "Failed to scan menu" });
+    } finally {
+      req.removeListener('aborted', cancel);
+      res.removeListener('close', cancel);
     }
   });
 
