@@ -250,3 +250,26 @@ The shared HTTP error handler returns generic 400/413/415 responses for known JS
 AI chat diagnostics now use fixed failure messages rather than logging questions, profile context, response snippets or provider exception objects. Context/storage failures return a generic HTTP error without the underlying exception message. Controlled provider and HTTP tests check private marker exclusion; the isolated application test checks captured process output. This is scoped to the chat path; other routes still require a logging review.
 
 `POST /ai/ask` requires a nonblank string `question` of at most 4,000 characters. Invalid values return 400 before profile lookup or inference; valid surrounding whitespace is trimmed. This per-question bound is not a request-rate or model-concurrency limit.
+
+### Retrying meal logging
+
+`POST /impact/log-meal` accepts an optional `Idempotency-Key` header (1–128 ASCII
+letters, digits, `.`, `_`, `:`, or `-`). Generate one key per intended meal and
+reuse it with the same `userId` if the response is lost. Concurrent retries return
+the original progress snapshot without awarding XP again, even after a server
+restart. A different `userId` with the same retained key returns 409.
+
+The receipt and XP/meal counters are written together in the impact JSON file.
+Receipts expire after 24 hours according to server wall time, with at most 1,000
+retained receipts per profile. At capacity, existing keys still replay; a new key
+returns 503 without awarding XP. Retry with the same key later. An expired key is
+a new operation, so do not retry old operations beyond that window.
+
+This guarantee is limited to one server process using its persistent data volume.
+It does not provide cross-process locking or protection after data loss. Requests
+without a key retain the previous behavior and can award XP again on retry; the
+existing iOS caller does not yet retain and send a retry key. Recipe generation
+and Cook With This do not yet have idempotency receipts. Tests exercise concurrent
+route calls, replay after another award, restart in a child process, conflicts,
+invalid keys and bounded receipt retention; they do not establish mobile or
+network-disconnect end-to-end behavior.
