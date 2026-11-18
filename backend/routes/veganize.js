@@ -82,16 +82,24 @@ router.post("/commit", async (req, res) => {
   let input;
   try { input = parseVeganizeRequest(req.body, { commit: true }); }
   catch { return res.status(400).json({ error: "Invalid recipe adaptation request" }); }
+  const controller = new AbortController();
+  const cancel = () => { if (!res.writableFinished) controller.abort(); };
+  req.once('aborted', cancel);
+  res.once('close', cancel);
+  if (req.aborted || res.destroyed) controller.abort();
   try {
+    controller.signal.throwIfAborted();
     const { userId: actualUserId, recipeContent, subs, originalPrompt } = input;
 
     // The demo's shared profile supplies restrictions when the client omits an ID.
     const user = !actualUserId || actualUserId === "ALBERT_SHARED_USER"
       ? await UserStorage.findOne({ sproutName: "Albert" })
       : await UserStorage.findById(actualUserId);
+    controller.signal.throwIfAborted();
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const rewritten = await rewriteRecipeSteps(subs, recipeContent, user);
+    const rewritten = await rewriteRecipeSteps(subs, recipeContent, user, {signal: controller.signal});
+    controller.signal.throwIfAborted();
 
     // simple split of steps by line
     const steps = rewritten
@@ -114,6 +122,7 @@ router.post("/commit", async (req, res) => {
       substitutionMap,
     });
 
+    controller.signal.throwIfAborted();
     const adaptedRecipe = {
       id: savedRecipe._id || savedRecipe.id,
       userId: savedRecipe.userId || null,
@@ -131,8 +140,12 @@ router.post("/commit", async (req, res) => {
 
     res.json({ adaptedRecipe });
   } catch {
+    if (controller.signal.aborted) return;
     console.error("veganize commit error:");
     res.status(500).json({ error: "Failed to veganize recipe" });
+  } finally {
+    req.removeListener('aborted', cancel);
+    res.removeListener('close', cancel);
   }
 });
 

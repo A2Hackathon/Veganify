@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -25,7 +26,7 @@ test('both rewrite routes pass saved restrictions and commit requires an existin
   const commit = await handler('veganize.js', '/commit');
   async function request(handle, body) {
     let status = 200;
-    await handle({body}, {status(code) { status = code; return this; }, json() {}});
+    await handle(Object.assign(new EventEmitter(), {body}), Object.assign(new EventEmitter(), {status(code) { status = code; return this; }, json() {}}));
     return status;
   }
   const body = {recipeText: 'Cook rice.', substitutions: []};
