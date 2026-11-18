@@ -18,7 +18,13 @@ const router = express.Router();
 =========================================================
 */
 router.post("/", imageUpload, async (req, res) => {
+  const controller = new AbortController();
+  const cancel = () => { if (!res.writableFinished) controller.abort(); };
+  req.once('aborted', cancel);
+  res.once('close', cancel);
+  if (req.aborted || res.destroyed) controller.abort();
   try {
+    controller.signal.throwIfAborted();
     if (!req.file) {
       console.error("No file uploaded");
       return res.status(400).json({ error: "image required" });
@@ -26,6 +32,7 @@ router.post("/", imageUpload, async (req, res) => {
 
     // ALWAYS use the single Albert user
     let user = await users.findOne({ sproutName: "Albert" });
+    controller.signal.throwIfAborted();
     if (!user) {
       user = await users.create({
         name: "User",
@@ -37,13 +44,16 @@ router.post("/", imageUpload, async (req, res) => {
       });
     }
 
+    controller.signal.throwIfAborted();
     const result = await recognize(req.file.buffer, { req, res });
+    controller.signal.throwIfAborted();
     const text = result.data.text || "";
 
     let ingredients;
     try { ingredients = parseIngredients({ text }); }
     catch { return res.status(422).json({ success: false, isConsumable: false, ingredients: [], error: "No usable ingredient list was extracted" }); }
 
+    controller.signal.throwIfAborted();
     const prefs = {
       dietLevel: user.dietLevel || "vegan",
       extraForbiddenTags: user.extraForbiddenTags || [],
@@ -51,8 +61,9 @@ router.post("/", imageUpload, async (req, res) => {
 
     let checks;
     try {
-      checks = await analyze(prefs, ingredients);
+      checks = await analyze(prefs, ingredients, {signal: controller.signal});
     } catch {
+      controller.signal.throwIfAborted();
       console.error("Ingredient analysis unavailable");
       checks = ingredients.map(ing => ({
         ingredient: ing,
@@ -62,6 +73,7 @@ router.post("/", imageUpload, async (req, res) => {
       }));
     }
 
+    controller.signal.throwIfAborted();
     // Ensure we have valid checks
     if (!checks || !Array.isArray(checks) || checks.length === 0) {
       console.warn("⚠️ No checks returned, creating fallback response");
@@ -75,6 +87,7 @@ router.post("/", imageUpload, async (req, res) => {
 
     res.json(scanResult(ingredients, checks));
   } catch (err) {
+    if (controller.signal.aborted) return;
     console.error("Ingredient image scan failed");
     res.status(scanFailureStatus(err)).json({
       success: false,
@@ -82,6 +95,9 @@ router.post("/", imageUpload, async (req, res) => {
       ingredients: [],
       error: "Failed to scan ingredients"
     });
+  } finally {
+    req.removeListener('aborted', cancel);
+    res.removeListener('close', cancel);
   }
 });
 
@@ -92,13 +108,20 @@ router.post("/", imageUpload, async (req, res) => {
 =========================================================
 */
 router.post("/text", async (req, res) => {
+  const controller = new AbortController();
+  const cancel = () => { if (!res.writableFinished) controller.abort(); };
+  req.once('aborted', cancel);
+  res.once('close', cancel);
+  if (req.aborted || res.destroyed) controller.abort();
   try {
+    controller.signal.throwIfAborted();
     let ingredientsList;
     try { ingredientsList = parseIngredients(req.body); }
     catch { return res.status(400).json({ success: false, isConsumable: false, ingredients: [], error: "Provide 1 to 100 ingredient names, at most 200 characters each and 8000 characters total" }); }
 
     // ALWAYS use the single Albert user
     let user = await users.findOne({ sproutName: "Albert" });
+    controller.signal.throwIfAborted();
     if (!user) {
       user = await users.create({
         name: "User",
@@ -110,6 +133,7 @@ router.post("/text", async (req, res) => {
       });
     }
 
+    controller.signal.throwIfAborted();
     const prefs = {
       dietLevel: user.dietLevel || "vegan",
       extraForbiddenTags: user.extraForbiddenTags || [],
@@ -117,8 +141,9 @@ router.post("/text", async (req, res) => {
 
     let checks;
     try {
-      checks = await analyze(prefs, ingredientsList);
+      checks = await analyze(prefs, ingredientsList, {signal: controller.signal});
     } catch {
+      controller.signal.throwIfAborted();
       console.error("Ingredient analysis unavailable");
       checks = ingredientsList.map(ing => ({
         ingredient: ing,
@@ -128,6 +153,7 @@ router.post("/text", async (req, res) => {
       }));
     }
 
+    controller.signal.throwIfAborted();
     // Ensure we have valid checks
     if (!checks || !Array.isArray(checks) || checks.length === 0) {
       console.warn("⚠️ No checks returned, creating fallback response");
@@ -141,6 +167,7 @@ router.post("/text", async (req, res) => {
 
     res.json(scanResult(ingredientsList, checks));
   } catch (err) {
+    if (controller.signal.aborted) return;
     console.error("Ingredient text scan failed");
     res.status(scanFailureStatus(err)).json({
       success: false,
@@ -148,6 +175,9 @@ router.post("/text", async (req, res) => {
       ingredients: [],
       error: "Failed to analyze ingredient text"
     });
+  } finally {
+    req.removeListener('aborted', cancel);
+    res.removeListener('close', cancel);
   }
 });
 
