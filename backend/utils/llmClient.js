@@ -77,5 +77,5 @@ export const answerWithContext = createAnswerService((request, options) =>
 //
 // 5. Generate vegan recipes
 //
-export const generateRecipes = createGenerationService(request =>
-  getClient().chat.completions.create({model: MODEL, ...request}));
+export const generateRecipes = createGenerationService((request, options) =>
+  getClient().chat.completions.create({model: MODEL, ...request}, options));
