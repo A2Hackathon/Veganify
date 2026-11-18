@@ -16,7 +16,8 @@ export function dietaryPolicyFor(dietLevel) {
 }
 
 export function createDietaryService(complete) {
-  return async function analyze(userPrefs, ingredientTags) {
+  return async function analyze(userPrefs, ingredientTags, {signal} = {}) {
+    signal?.throwIfAborted();
     try {
       const dietLevel = userPrefs.dietLevel ?? 'vegan';
       const policy = dietaryPolicyFor(dietLevel);
@@ -34,9 +35,11 @@ Return only a JSON array with one row for every supplied ingredient, preserving 
 {"ingredient":"name","allowed":"Allowed|NotAllowed|Ambiguous","reason":"brief explanation","suggestions":[]}
 For NotAllowed items, suggest alternatives consistent with both the policy and additional restrictions. Do not claim medical or allergy safety.` },
         { role: 'user', content: JSON.stringify({ ingredients: ingredientTags, additionalRestrictions: restrictions }) },
-      ] });
+      ] }, {signal});
+      signal?.throwIfAborted();
       return dietaryAnalysis(ingredientTags, response.choices?.[0]?.message?.content);
     } catch {
+      signal?.throwIfAborted();
       return dietaryAnalysis(ingredientTags, null);
     }
   };

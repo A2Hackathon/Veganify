@@ -68,8 +68,8 @@ export const rewriteRecipeSteps = createRewriteService((request, options) =>
 //
 // 3. Dietary check
 //
-export const isAllowedForUser = createDietaryService(request =>
-  getClient().chat.completions.create({ model: MODEL, ...request }));
+export const isAllowedForUser = createDietaryService((request, options) =>
+  getClient().chat.completions.create({ model: MODEL, ...request }, options));
 
 //
 // 4. Answer with context
