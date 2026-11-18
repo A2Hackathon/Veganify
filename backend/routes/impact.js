@@ -1,7 +1,19 @@
+import { createHash } from "node:crypto";
 import express from "express";
 import { UserStorage, UserImpactStorage } from "../utils/jsonStorage.js";
 
 const router = express.Router();
+const RECEIPT_TTL_MS = 24 * 60 * 60 * 1000;
+const MAX_MEAL_RECEIPTS = 1000;
+class MealConflict extends Error {}
+class ReceiptCapacity extends Error {}
+
+function progressResponse(impact) {
+  return {
+    xp: impact.xp, coins: impact.coins, streakDays: impact.streak_days,
+    ...computeLevelAndXpToNext(impact.xp), total_meals_logged: impact.total_meals_logged,
+  };
+}
 
 function computeLevelAndXpToNext(xp) {
   const level = Math.floor(xp / 100) + 1;
@@ -15,6 +27,11 @@ router.post("/log-meal", async (req, res) => {
   if (typeof userId !== "string" || !userId.trim() || userId.length > 128) {
     return res.status(400).json({ error: "userId must contain 1 to 128 characters" });
   }
+  const key = req.headers?.['idempotency-key'];
+  if (key !== undefined && (typeof key !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/.test(key))) {
+    return res.status(400).json({error: "Idempotency-Key must contain 1 to 128 ASCII letters, digits, . _ : -"});
+  }
+  const fingerprint = createHash('sha256').update(JSON.stringify({userId})).digest('hex');
   try {
     // ALWAYS use the single Albert user
     let user = await UserStorage.findOne({ sproutName: "Albert" });
@@ -42,8 +59,27 @@ router.post("/log-meal", async (req, res) => {
       });
     }
 
+    let response;
     impact = await UserImpactStorage.update(user._id, impact => {
       const today = new Date();
+      let receipts;
+      if (key !== undefined) {
+        receipts = impact.meal_receipts ?? [];
+        if (!Array.isArray(receipts) || receipts.length > MAX_MEAL_RECEIPTS || receipts.some(receipt =>
+          !receipt || typeof receipt.key !== 'string' || typeof receipt.fingerprint !== 'string' ||
+          !Number.isSafeInteger(receipt.created_ms) || !receipt.response || typeof receipt.response !== 'object')) {
+          throw new Error('Invalid meal receipts');
+        }
+        // Do not evict an unexpired receipt: that would let an accepted retry award XP again.
+        receipts = receipts.filter(receipt => today.getTime() - receipt.created_ms < RECEIPT_TTL_MS);
+        const previous = receipts.find(receipt => receipt.key === key);
+        if (previous) {
+          if (previous.fingerprint !== fingerprint) throw new MealConflict();
+          response = previous.response;
+          return;
+        }
+        if (receipts.length >= MAX_MEAL_RECEIPTS) throw new ReceiptCapacity();
+      }
       const last = impact.last_activity_date
         ? new Date(impact.last_activity_date)
         : null;
@@ -63,23 +99,17 @@ router.post("/log-meal", async (req, res) => {
       impact.total_meals_logged += 1;
       impact.xp += 10;
       impact.last_activity_date = today;
+      response = progressResponse(impact);
+      if (key !== undefined) {
+        impact.meal_receipts = [...receipts, {key, fingerprint, created_ms: today.getTime(), response}];
+      }
 
     });
 
-    const xp = impact.xp;
-    const coins = impact.coins;
-    const streakDays = impact.streak_days;
-    const { level, xpToNextLevel } = computeLevelAndXpToNext(xp);
-
-    res.json({
-      xp,
-      coins,
-      streakDays,
-      level,
-      xpToNextLevel,
-      total_meals_logged: impact.total_meals_logged,
-    });
-  } catch {
+    res.json(response);
+  } catch (error) {
+    if (error instanceof MealConflict) return res.status(409).json({error: "Idempotency key already used for different input"});
+    if (error instanceof ReceiptCapacity) return res.status(503).json({error: "Meal retry receipt capacity reached; retry later with the same key"});
     console.error("Failed to log meal");
     res.status(500).json({ error: "Failed to log meal" });
   }
