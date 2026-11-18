@@ -59,8 +59,8 @@ ${recipeText}
 //
 // 2. Rewrite recipe steps with substitutions
 //
-export const rewriteRecipeSteps = createRewriteService(request =>
-  getClient().chat.completions.create({model: MODEL, ...request}));
+export const rewriteRecipeSteps = createRewriteService((request, options) =>
+  getClient().chat.completions.create({model: MODEL, ...request}, options));
 
 //
 // 3. Dietary check
