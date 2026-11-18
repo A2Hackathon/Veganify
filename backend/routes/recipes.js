@@ -152,11 +152,18 @@ router.post("/veganize", async (req, res) => {
   let input;
   try { input = parseAdaptationRequest(req.body); }
   catch { return res.status(400).json({ error: "Provide a userId (1–128 characters) and recipe inputText (1–8000 characters)" }); }
+  const controller = new AbortController();
+  const cancel = () => { if (!res.writableFinished) controller.abort(); };
+  req.once('aborted', cancel);
+  res.once('close', cancel);
+  if (req.aborted || res.destroyed) controller.abort();
   try {
+    controller.signal.throwIfAborted();
     const { inputText } = input;
 
     // ALWAYS use the single Albert user
     let user = await UserStorage.findOne({ sproutName: "Albert" });
+    controller.signal.throwIfAborted();
     if (!user) {
       // Create Albert if it doesn't exist
       user = await UserStorage.create({
@@ -169,8 +176,10 @@ router.post("/veganize", async (req, res) => {
       });
     }
 
+    controller.signal.throwIfAborted();
     // Extract ingredients
-    const ingredients = await extractIngredients(inputText);
+    const ingredients = await extractIngredients(inputText, {signal: controller.signal});
+    controller.signal.throwIfAborted();
 
     // Get substitutions
     const substitutions = JSON.parse(readFileSync(join(__dirname, "../config/substitutions.json"), "utf-8"));
@@ -191,7 +200,8 @@ router.post("/veganize", async (req, res) => {
     }
 
     // Rewrite recipe
-    const rewritten = await rewriteRecipeSteps(adaptedIngredients, inputText, user);
+    const rewritten = await rewriteRecipeSteps(adaptedIngredients, inputText, user, {signal: controller.signal});
+    controller.signal.throwIfAborted();
 
     // Convert to steps array
     const steps = rewritten
@@ -222,6 +232,7 @@ router.post("/veganize", async (req, res) => {
       substitutionMap,
     });
 
+    controller.signal.throwIfAborted();
     const result = {
       id: recipe._id || recipe.id,
       userId: recipe.userId || user._id,
@@ -238,8 +249,12 @@ router.post("/veganize", async (req, res) => {
 
     res.json(result);
   } catch {
+    if (controller.signal.aborted) return;
     console.error("veganize recipe error:");
     res.status(500).json({ error: "Failed to veganize recipe" });
+  } finally {
+    req.removeListener('aborted', cancel);
+    res.removeListener('close', cancel);
   }
 });
 

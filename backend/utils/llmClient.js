@@ -20,7 +20,8 @@ const MODEL = "google/gemini-2.5-flash";
 //
 // 1. Extract ingredients
 //
-export async function extractIngredients(recipeText) {
+export async function extractIngredients(recipeText, {signal} = {}) {
+  signal?.throwIfAborted();
   const prompt = `
 Extract ALL ingredients from the recipe below. Be thorough and include EVERY ingredient mentioned, including:
 - All meats (beef, pork, chicken, turkey, lamb, veal, etc. - including ground, diced, sliced, whole, etc.)
@@ -47,10 +48,12 @@ ${recipeText}
         { role: "system", content: "You are a thorough ingredient extractor. Extract every single ingredient mentioned in recipes, especially animal products. Return only a plain list, one ingredient per line." },
         { role: "user", content: prompt },
       ],
-    });
+    }, {signal});
+    signal?.throwIfAborted();
 
     return extractedIngredients(response.choices?.[0]?.message?.content);
   } catch {
+    signal?.throwIfAborted();
     // A provider failure is not evidence that a recipe has no ingredients.
     throw new Error("Ingredient extraction unavailable");
   }
