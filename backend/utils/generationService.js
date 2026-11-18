@@ -2,7 +2,8 @@ import { generatedRecipes } from "./modelResults.js";
 import { dietaryPolicyFor } from "./dietaryService.js";
 
 export function createGenerationService(complete) {
-  return async function generateRecipes(ingredients, count = 3, user = {}) {
+  return async function generateRecipes(ingredients, count = 3, user = {}, {signal} = {}) {
+    signal?.throwIfAborted();
     const policy = dietaryPolicyFor(user?.dietLevel || "vegan");
     const restrictions = user?.extraForbiddenTags ?? [];
     if (!user || !policy || !Array.isArray(restrictions) ||
@@ -40,10 +41,12 @@ export function createGenerationService(complete) {
           },
           { role: "user", content: prompt },
         ],
-      });
+      }, {signal});
+      signal?.throwIfAborted();
 
       return generatedRecipes(response.choices?.[0]?.message?.content, count);
     } catch {
+      signal?.throwIfAborted();
       throw new Error("Recipe generation unavailable");
     }
   };

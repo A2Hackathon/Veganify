@@ -17,11 +17,18 @@ router.post("/generate", async (req, res) => {
   let input;
   try { input = parseGenerationRequest(req.body); }
   catch { return res.status(400).json({ error: "Provide a userId (1–128 characters), an optional prompt (up to 4000 characters), and at most 100 ingredient names (200 characters each, 8000 total)" }); }
+  const controller = new AbortController();
+  const cancel = () => { if (!res.writableFinished) controller.abort(); };
+  req.once('aborted', cancel);
+  res.once('close', cancel);
+  if (req.aborted || res.destroyed) controller.abort();
   try {
+    controller.signal.throwIfAborted();
     const { ingredients, prompt } = input;
 
     // ALWAYS use the single Albert user
     let user = await UserStorage.findOne({ sproutName: "Albert" });
+    controller.signal.throwIfAborted();
     if (!user) {
       // Create Albert if it doesn't exist
       user = await UserStorage.create({
@@ -34,10 +41,13 @@ router.post("/generate", async (req, res) => {
       });
     }
 
+    controller.signal.throwIfAborted();
+
     // If ingredients not provided, fetch from grocery list
     let ingredientsList = ingredients;
     if (ingredientsList.length === 0) {
       const groceryItems = await GroceryItemStorage.find({ userId: user._id });
+      controller.signal.throwIfAborted();
       ingredientsList = groceryItems.map(item => item.name);
     }
 
@@ -49,7 +59,8 @@ router.post("/generate", async (req, res) => {
     try { ingredientsList = parseIngredients({ ingredients: ingredientsList }); }
     catch { return res.status(400).json({ error: "Grocery ingredients exceed recipe generation limits or contain invalid names" }); }
 
-    const generated = await generateRecipes(ingredientsList, 3, user);
+    const generated = await generateRecipes(ingredientsList, 3, user, {signal: controller.signal});
+    controller.signal.throwIfAborted();
 
     const stored = await RecipeStorage.createMany(generated.map(r => ({
         userId: user._id,
@@ -69,6 +80,7 @@ router.post("/generate", async (req, res) => {
         substitutionMap: undefined,
     })));
 
+    controller.signal.throwIfAborted();
     const saved = stored.map(recipe => ({
         id: recipe._id || recipe.id,
         userId: recipe.userId || user._id,
@@ -85,8 +97,12 @@ router.post("/generate", async (req, res) => {
 
     res.json(saved);
   } catch {
+    if (controller.signal.aborted) return;
     console.error("generate recipes error:");
     res.status(500).json({ error: "Failed to generate recipes" });
+  } finally {
+    req.removeListener('aborted', cancel);
+    res.removeListener('close', cancel);
   }
 });
 
