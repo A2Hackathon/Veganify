@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-test('cooking rejects invalid grocery lists before inference or progress writes', async t => {
+test('cooking rejects invalid users and grocery lists before inference or progress writes', async t => {
   const root = fs.mkdtempSync(new URL('../cook-input-fixture-', import.meta.url));
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   for (const dir of ['routes', 'utils']) fs.mkdirSync(join(root, dir));
@@ -24,21 +24,27 @@ test('cooking rejects invalid grocery lists before inference or progress writes'
   const cook = router.stack.find(layer => layer.route?.path === '/').route.stack[0].handle;
   let items = [];
   t.mock.method(storage.GroceryItemStorage, 'find', async () => items.map(name => ({name})));
-  async function request() {
+  async function request(body) {
     let status = 200;
-    await cook(Object.assign(new EventEmitter(), {body: {user_id: user._id}}), Object.assign(new EventEmitter(), {
+    await cook(Object.assign(new EventEmitter(), {body}), Object.assign(new EventEmitter(), {
       status(code) { status = code; return this; }, json() {},
     }), error => { throw error; });
     return status;
   }
+  items = ['rice'];
+  for (const body of [undefined, null, {}, {user_id: ''}, {user_id: ' '}, {user_id: 1}, {user_id: true}, {user_id: []}, {user_id: {}}, {user_id: 'x'.repeat(129)}]) {
+    assert.equal(await request(body), 400);
+    assert.equal(model.calls, 0);
+    assert.equal(await storage.UserImpactStorage.findOne({user_id: user._id}), null);
+  }
   for (const names of [[], [null], [' '], ['x'.repeat(201)], Array(101).fill('rice'), Array(41).fill('x'.repeat(200))]) {
     items = names;
-    assert.equal(await request(), 400);
+    assert.equal(await request({user_id: user._id}), 400);
     assert.equal(model.calls, 0);
     assert.equal(await storage.UserImpactStorage.findOne({user_id: user._id}), null);
   }
   items = [' rice ', 'rice'];
-  assert.equal(await request(), 200);
+  assert.equal(await request({user_id: user._id}), 200);
   assert.deepEqual(model.received, ['rice']);
   assert.equal(model.calls, 1);
   assert.equal((await storage.UserImpactStorage.findOne({user_id: user._id})).xp, 5);
