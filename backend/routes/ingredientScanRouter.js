@@ -5,7 +5,7 @@ import { imageUpload } from "../utils/imageUpload.js";
 
 // Preserve expected OCR failure statuses without trusting arbitrary exception values.
 function scanFailureStatus(error) {
-  return [400, 499, 502, 503, 504].includes(error?.status) ? error.status : 500;
+  return [400, 413, 415, 499, 502, 503, 504].includes(error?.status) ? error.status : 500;
 }
 
 export function createScanIngredientsRouter({ users, analyze, recognize }) {

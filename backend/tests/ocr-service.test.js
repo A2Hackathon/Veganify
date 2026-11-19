@@ -12,14 +12,16 @@ async function fixture(t) {
   const workerPath = join(root, 'worker.cjs');
   await writeFile(workerPath, `const fs = require('node:fs');
     process.once('message', bytes => {
-      const input = JSON.parse(bytes.toString());
+      const input = JSON.parse(bytes.subarray(68).toString());
       fs.writeFileSync(input.pidFile, String(process.pid));
       if (input.mode === 'success') process.send({text:'rice'});
       if (input.mode === 'invalid') process.send({text:42});
       if (input.mode === 'exit') process.exit(1);
       setInterval(() => {}, 1000);
     });`);
-  const input = mode => Buffer.from(JSON.stringify({ mode, pidFile: join(root, 'pid') }));
+  // A real 1x1 PNG followed by fixture-only control data for the fake OCR child.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aK1kAAAAASUVORK5CYII=', 'base64');
+  const input = mode => Buffer.concat([png, Buffer.from(JSON.stringify({ mode, pidFile: join(root, 'pid') }))]);
   const pid = async () => Number(await readFile(join(root, 'pid'), 'utf8'));
   return { root, workerPath, input, pid };
 }

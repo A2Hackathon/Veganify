@@ -1,4 +1,25 @@
 import { fork } from 'node:child_process';
+import { imageSize } from 'image-size';
+
+export const MAX_IMAGE_DIMENSION = 8192;
+export const MAX_IMAGE_PIXELS = 16_000_000;
+
+function validateImage(image) {
+  if (!Buffer.isBuffer(image) || image.length > 5 * 1024 * 1024) throw failure('Invalid OCR input', 400);
+  const png = image.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  const jpeg = image[0] === 0xff && image[1] === 0xd8 && image[2] === 0xff;
+  if (!png && !jpeg) throw failure('OCR supports PNG and JPEG images only', 415);
+  let dimensions;
+  try { dimensions = imageSize(image); }
+  catch { throw failure('Invalid image header', 400); }
+  const {width, height} = dimensions;
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1) {
+    throw failure('Invalid image dimensions', 400);
+  }
+  if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION || width * height > MAX_IMAGE_PIXELS) {
+    throw failure('Image dimensions exceed OCR limits', 413);
+  }
+}
 
 function failure(message, status) { return Object.assign(new Error(message), { status }); }
 
@@ -9,7 +30,7 @@ export function createOCRService({ workerPath = new URL('../workers/ocr.js', imp
   let active = 0;
   return async function recognize(image, { signal } = {}) {
     if (signal?.aborted) throw failure('OCR request cancelled', 499);
-    if (!Buffer.isBuffer(image) || image.length > 5 * 1024 * 1024) throw failure('Invalid OCR input', 400);
+    validateImage(image);
     if (active >= maxConcurrent) throw failure('OCR capacity unavailable; retry later', 503);
     active++;
     try {
