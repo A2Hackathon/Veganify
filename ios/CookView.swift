@@ -7,6 +7,7 @@ struct CookView: View {
     @State private var inputText: String = ""
     @State private var showingGroceryList = false
     @State private var showingSavedRecipes = false
+    @State private var confirmingNewGeneration = false
     
     var body: some View {
         NavigationStack {
@@ -32,6 +33,15 @@ struct CookView: View {
                                         ))
                                 }
                                 
+                                if vm.generationFailed {
+                                    HStack {
+                                        Button("Retry recipe") { Task { await vm.generateRecipe() } }
+                                        Button("Start a new attempt") { confirmingNewGeneration = true }
+                                    }
+                                    .disabled(vm.isLoading)
+                                    .padding(.horizontal)
+                                }
+
                                 // Inline action buttons (only show if no recipes in recent messages)
                                 if !vm.chatMessages.contains(where: { $0.recipe != nil }) {
                                     VStack(spacing: 12) {
@@ -165,6 +175,14 @@ struct CookView: View {
                         }
                     }
                 }
+            }
+            .confirmationDialog("Start a new recipe attempt?", isPresented: $confirmingNewGeneration, titleVisibility: .visible) {
+                Button("Start new attempt", role: .destructive) {
+                    Task { await vm.generateRecipe(startNew: true) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("The previous request may already have saved recipes. Starting again can create another batch. Retry first to recover the previous result.")
             }
             .sheet(isPresented: $showingGroceryList) {
                 GroceryListView()
