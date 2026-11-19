@@ -27,3 +27,6 @@ jobs:
         run: |
           xcodebuild -project ios/Sprout.xcodeproj -scheme Sprout -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/sprout-debug CODE_SIGNING_ALLOWED=NO build
           xcodebuild -project ios/Sprout.xcodeproj -scheme Sprout -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/sprout-release CODE_SIGNING_ALLOWED=NO build
+      - name: Test actual API client HTTP retry across process restart
+        timeout-minutes: 8
+        run: python3 tests/ios_transport.py

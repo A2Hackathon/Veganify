@@ -5,9 +5,12 @@ class APIClient {
     static let shared = APIClient()
     
     private let configuration: Result<APIConfiguration, Error>
+    private let retryStore: GenerationRetryStore
     private let session: URLSession
 
-    init(environment: [String: String] = ProcessInfo.processInfo.environment) {
+    init(environment: [String: String] = ProcessInfo.processInfo.environment,
+         retryStore: GenerationRetryStore = .shared) {
+        self.retryStore = retryStore
         self.configuration = Result { try APIConfiguration(environment: environment) }
         self.session = URLSession(configuration: .ephemeral, delegate: NoRedirectDelegate(), delegateQueue: nil)
     }
@@ -325,7 +328,7 @@ class APIClient {
         struct Request: Encodable { let userId: String }
         let server = try configuration.get().baseURL
         let normalizedUser = userId.trimmingCharacters(in: .whitespacesAndNewlines)
-        return try await GenerationRetryStore.shared.run(
+        return try await retryStore.run(
             server: server, userId: normalizedUser, startNew: startNew
         ) { key in
             let recipes: [Recipe] = try await self.request(
