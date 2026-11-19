@@ -1,4 +1,5 @@
 import express from "express";
+import { createHash } from "node:crypto";
 import { RecipeStorage, UserStorage, GroceryItemStorage } from "../utils/jsonStorage.js";
 import { generateRecipes, extractIngredients, rewriteRecipeSteps } from "../utils/llmClient.js";
 import { readFileSync } from "fs";
@@ -12,11 +13,32 @@ const __dirname = dirname(__filename);
 
 const router = express.Router();
 
+function generationResponse(stored) {
+  return stored.map(recipe => ({
+    id: recipe._id || recipe.id,
+    userId: recipe.userId,
+    title: recipe.title,
+    tags: recipe.tags,
+    duration: recipe.duration,
+    ingredients: recipe.ingredients,
+    steps: recipe.steps,
+    previewImageUrl: recipe.previewImageUrl,
+    originalPrompt: recipe.originalPrompt,
+    type: recipe.type,
+    substitutionMap: recipe.substitutionMap || null,
+  }));
+}
+
 // POST /recipes/generate
 router.post("/generate", async (req, res) => {
   let input;
   try { input = parseGenerationRequest(req.body); }
   catch { return res.status(400).json({ error: "Provide a userId (1–128 characters), an optional prompt (up to 4000 characters), and at most 100 ingredient names (200 characters each, 8000 total)" }); }
+  const key = req.headers?.['idempotency-key'];
+  if (key !== undefined && (typeof key !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/.test(key))) {
+    return res.status(400).json({error: 'Invalid Idempotency-Key'});
+  }
+  const retry = key === undefined ? undefined : {key, fingerprint: createHash('sha256').update(JSON.stringify(input)).digest('hex')};
   const controller = new AbortController();
   const cancel = () => { if (!res.writableFinished) controller.abort(); };
   req.once('aborted', cancel);
@@ -25,6 +47,12 @@ router.post("/generate", async (req, res) => {
   try {
     controller.signal.throwIfAborted();
     const { ingredients, prompt } = input;
+    if (retry) {
+      const previous = await RecipeStorage.findGeneration(retry);
+      controller.signal.throwIfAborted();
+      if (previous) return res.json(generationResponse(previous));
+    }
+
 
     // ALWAYS use the single Albert user
     let user = await UserStorage.findOne({ sproutName: "Albert" });
@@ -78,26 +106,17 @@ router.post("/generate", async (req, res) => {
         originalPrompt: prompt || "",
         type: "simplified",
         substitutionMap: undefined,
-    })));
+    })), retry);
 
     controller.signal.throwIfAborted();
-    const saved = stored.map(recipe => ({
-        id: recipe._id || recipe.id,
-        userId: recipe.userId || user._id,
-        title: recipe.title,
-        tags: recipe.tags,
-        duration: recipe.duration,
-        ingredients: recipe.ingredients,
-        steps: recipe.steps,
-        previewImageUrl: recipe.previewImageUrl,
-        originalPrompt: recipe.originalPrompt,
-        type: recipe.type,
-        substitutionMap: recipe.substitutionMap || null,
-    }));
+    const saved = generationResponse(stored);
 
     res.json(saved);
-  } catch {
+  } catch (error) {
     if (controller.signal.aborted) return;
+    if (error?.code === 'RECIPE_RETRY' && [400, 409, 502, 503].includes(error.status)) {
+      return res.status(error.status).json({error: error.message});
+    }
     console.error("generate recipes error:");
     res.status(500).json({ error: "Failed to generate recipes" });
   } finally {
