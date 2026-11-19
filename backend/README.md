@@ -285,4 +285,15 @@ process concurrency to two.
 This bounds admitted request concurrency, not total process memory. Multipart
 copies, downstream work finishing cancellation, and decoded image dimensions
 can consume additional memory. The limit is per Node process; it is not a
-distributed quota, and decoded-pixel limits remain future work.
+distributed quota.
+
+Before starting an OCR child, the service checks PNG/JPEG headers and requires
+positive dimensions no greater than 8192 pixels per side and 16 million pixels
+in total. Other formats return 415; malformed dimension headers return 400;
+images above the dimension/pixel limits return 413. The iOS client uploads JPEG.
+Resize larger images before submitting them. Header inspection uses the pinned
+`image-size` package and does not decode pixels or verify the complete image.
+Malformed compressed data can still fail inside the isolated OCR child. These
+checks are not a hard memory quota; process deadlines and child concurrency
+limits remain necessary. Tests use controlled workers for admission checks and
+do not establish live OCR quality or peak memory usage.

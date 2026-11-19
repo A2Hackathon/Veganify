@@ -12,6 +12,7 @@
     "cors": "2.8.5",
     "dotenv": "16.6.1",
     "express": "4.22.3",
+    "image-size": "2.1.0",
     "multer": "2.5.0",
     "openai": "4.104.0",
     "tesseract.js": "5.1.1"

@@ -44,11 +44,11 @@ test('scan diagnostics exclude OCR, preferences and dependency errors', async ()
       analysisFailure = false;
     }
     assert.ok(!messages.join('\n').includes(marker), 'private data reached diagnostics');
-    for (const status of [undefined, 200, 999, 503, 504]) {
+    for (const status of [undefined, 200, 999, 413, 415, 503, 504]) {
       failure = Object.assign(new Error(marker), { status });
       for (const image of [true, false]) {
         const result = await request(image);
-        assert.equal(result.status, status === 503 || status === 504 ? status : 500);
+        assert.equal(result.status, [413, 415, 503, 504].includes(status) ? status : 500);
         assert.equal(result.body.success, false);
         assert.equal(result.body.isConsumable, false);
         assert.ok(!JSON.stringify(result.body).includes(marker));
