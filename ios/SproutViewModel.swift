@@ -8,6 +8,8 @@ class SproutViewModel: ObservableObject {
     @Published var userProfile: UserProfile?
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var generationFailed = false
+    private var isGeneratingRecipe = false
     
     // Home data
     @Published var missions: [Mission] = []
@@ -283,7 +285,10 @@ class SproutViewModel: ObservableObject {
         }
     }
     
-    func generateRecipe() async {
+    func generateRecipe(startNew: Bool = false) async {
+        guard !isGeneratingRecipe else { return }
+        isGeneratingRecipe = true
+        defer { isGeneratingRecipe = false }
         guard let userId = userProfile?.id else {
             await MainActor.run {
                 chatMessages.append(ChatMessage(isUser: false, text: "Please complete onboarding first to generate recipes."))
@@ -301,7 +306,8 @@ class SproutViewModel: ObservableObject {
         do {
             print("🍳 Generating recipe with LLM (generateRecipes)...")
             print("   User ID:", userId)
-            let recipe = try await apiClient.generateRecipe(userId: userId)
+            let recipe = try await apiClient.generateRecipe(userId: userId, startNew: startNew)
+            generationFailed = false
             print("✅ Recipe generated:", recipe.title)
             print("   Steps count:", recipe.steps.count)
             await MainActor.run {
@@ -309,10 +315,11 @@ class SproutViewModel: ObservableObject {
                 chatMessages.append(message)
             }
         } catch {
+            generationFailed = true
             print("❌ Recipe generation error: \(error)")
             errorMessage = "Failed to generate recipe: \(error.localizedDescription)"
             await MainActor.run {
-                chatMessages.append(ChatMessage(isUser: false, text: "Sorry, I couldn't generate a recipe right now. Please try again."))
+                chatMessages.append(ChatMessage(isUser: false, text: "Recipe generation failed: \(error.localizedDescription) Retry to recover the same attempt."))
             }
         }
     }

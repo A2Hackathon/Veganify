@@ -16,7 +16,8 @@ class APIClient {
         endpoint: String,
         method: String = "GET",
         body: Encodable? = nil,
-        imageData: Data? = nil
+        imageData: Data? = nil,
+        idempotencyKey: String? = nil
     ) async throws -> T {
         let configuration = try configuration.get()
         let fullURL = configuration.baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + endpoint
@@ -32,6 +33,9 @@ class APIClient {
         request.setValue("Bearer \(configuration.token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30.0
+        if let idempotencyKey = idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        }
         
         if let body = body {
             let encoder = JSONEncoder()
@@ -317,24 +321,22 @@ class APIClient {
         )
     }
     
-    func generateRecipe(userId: String) async throws -> Recipe {
-        struct Request: Encodable {
-            let userId: String
+    func generateRecipe(userId: String, startNew: Bool = false) async throws -> Recipe {
+        struct Request: Encodable { let userId: String }
+        let server = try configuration.get().baseURL
+        let normalizedUser = userId.trimmingCharacters(in: .whitespacesAndNewlines)
+        return try await GenerationRetryStore.shared.run(
+            server: server, userId: normalizedUser, startNew: startNew
+        ) { key in
+            let recipes: [Recipe] = try await self.request(
+                endpoint: "/recipes/generate", method: "POST",
+                body: Request(userId: normalizedUser), idempotencyKey: key
+            )
+            guard let firstRecipe = recipes.first else { throw APIError.invalidResponse }
+            return firstRecipe
         }
-        
-        let recipes: [Recipe] = try await request(
-            endpoint: "/recipes/generate",
-            method: "POST",
-            body: Request(userId: userId)
-        )
-        
-        guard let firstRecipe = recipes.first else {
-            throw APIError.invalidResponse
-        }
-        
-        return firstRecipe
     }
-    
+
     func veganizeRecipe(userId: String, inputText: String) async throws -> Recipe {
         struct Request: Encodable {
             let userId: String

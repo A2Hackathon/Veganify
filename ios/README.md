@@ -68,3 +68,29 @@ The client no longer uses the old hardcoded LAN address or placeholder productio
 Do not commit populated schemes, tokens, or credential-bearing screenshots. These values are read from the process environment and are not bundled defaults. Debug builds also allow HTTP loopback (`http://127.0.0.1:4000`) for a simulator on the backend host; remote addresses and Release builds require HTTPS. Missing configuration fails before networking. HTTP redirects are refused. This runtime configuration supports a developer demo, not a distributed production login flow or separate user accounts. Physical-device transport/ATS setup and complete app UI builds remain unverified; the client/model compiler and configuration tests are distinct CI checks.
 
 Request and response bodies are no longer printed by APIClient. Earlier network setup instructions referring to a hardcoded address are superseded by this section.
+
+### Recipe generation retries
+
+`APIClient.generateRecipe` persists an `Idempotency-Key` in Application Support
+before sending to `/recipes/generate`. A failed request or response decode keeps
+the attempt; retrying (including after an app restart) uses the same key for the
+same configured server URL and user. Successful decoding clears it so the next
+generation is intentional new work. The actor rejects overlapping generations
+for that scope and preserves other users' pending attempts.
+
+After a failure, **Retry recipe** recovers the pending attempt. **Start a new
+attempt** requires confirmation because the previous request may already have
+saved recipes. Changed groceries/preferences do not change an existing attempt's
+identity. After 23 hours, or if the device clock moves backwards, automatic retry
+fails closed: inspect existing recipes before explicitly starting again. The
+server retains receipts for 24 hours; clock changes, deleting app data, changing
+the configured URL, or restoring an old backup can invalidate these protections.
+This is single-app-process persistence, not cross-device coordination or a
+power-loss durability guarantee. A crash after decoding/clearing but before the
+UI displays the result remains a delivery gap. The demo still uses a shared user.
+
+`tests/GenerationRetryTests.swift` exercises restart reconstruction, failed
+responses, successful completion, user/server isolation, expiry, explicit reset,
+concurrent calls and persistence failures. macOS CI runs it and type-checks the
+actual API client; the changed views are syntax-checked. These checks do not
+replace simulator/device end-to-end testing.

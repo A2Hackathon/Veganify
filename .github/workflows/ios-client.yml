@@ -16,5 +16,10 @@ jobs:
       - name: Type-check actual iOS API client and models
         run: |
           SDK=$(xcrun --sdk iphonesimulator --show-sdk-path)
-          xcrun swiftc -typecheck -D DEBUG -sdk "$SDK" -target arm64-apple-ios16.0-simulator ios/Models.swift ios/APIConfiguration.swift ios/APIClient.swift
-          xcrun swiftc -typecheck -sdk "$SDK" -target arm64-apple-ios16.0-simulator ios/Models.swift ios/APIConfiguration.swift ios/APIClient.swift
+          xcrun swiftc -typecheck -D DEBUG -sdk "$SDK" -target arm64-apple-ios16.0-simulator ios/Models.swift ios/APIConfiguration.swift ios/GenerationRetryStore.swift ios/APIClient.swift
+          xcrun swiftc -typecheck -sdk "$SDK" -target arm64-apple-ios16.0-simulator ios/Models.swift ios/APIConfiguration.swift ios/GenerationRetryStore.swift ios/APIClient.swift
+      - name: Test durable recipe retry lifecycle
+        run: |
+          swiftc ios/GenerationRetryStore.swift tests/GenerationRetryTests.swift -o /tmp/generation-retry
+          /tmp/generation-retry
+          swiftc -frontend -parse ios/CookView.swift ios/SproutViewModel.swift
