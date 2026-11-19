@@ -273,3 +273,16 @@ and Cook With This do not yet have idempotency receipts. Tests exercise concurre
 route calls, replay after another award, restart in a child process, conflicts,
 invalid keys and bounded receipt retention; they do not establish mobile or
 network-disconnect end-to-end behavior.
+### Scan upload admission
+
+All image scan routes share a process-local admission limit of four requests.
+Excess requests receive HTTP 503 with `Retry-After: 1` before multipart parsing;
+there is no waiting queue. Each admitted file is still limited to 5 MiB.
+A slot remains occupied until multipart parsing/cleanup and the response have
+finished, including error and disconnect paths. OCR separately limits child
+process concurrency to two.
+
+This bounds admitted request concurrency, not total process memory. Multipart
+copies, downstream work finishing cancellation, and decoded image dimensions
+can consume additional memory. The limit is per Node process; it is not a
+distributed quota, and decoded-pixel limits remain future work.
