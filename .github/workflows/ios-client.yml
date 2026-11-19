@@ -23,3 +23,7 @@ jobs:
           swiftc ios/GenerationRetryStore.swift tests/GenerationRetryTests.swift -o /tmp/generation-retry
           /tmp/generation-retry
           swiftc -frontend -parse ios/CookView.swift ios/SproutViewModel.swift
+      - name: Build complete iOS app for simulator
+        run: |
+          xcodebuild -project ios/Sprout.xcodeproj -scheme Sprout -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/sprout-debug CODE_SIGNING_ALLOWED=NO build
+          xcodebuild -project ios/Sprout.xcodeproj -scheme Sprout -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/sprout-release CODE_SIGNING_ALLOWED=NO build
