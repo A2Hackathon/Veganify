@@ -57,10 +57,8 @@ def run():
     assert candidates, 'An available iPhone Simulator is required'
     device = candidates[0]
     booted_here = device['state'] != 'Booted'
+    did_boot = False
     try:
-        if booted_here:
-            subprocess.run(['xcrun', 'simctl', 'boot', device['udid']], check=True)
-        subprocess.run(['xcrun', 'simctl', 'bootstatus', device['udid'], '-b'], check=True, timeout=180)
         with tempfile.TemporaryDirectory(prefix='veganify-transport-') as temp:
             directory = Path(temp)
             executable = directory / 'transport-checks'
@@ -70,7 +68,12 @@ def run():
                             '-target', f'{arch}-apple-ios16.0-simulator',
                             'ios/Models.swift', 'ios/APIConfiguration.swift', 'ios/GenerationRetryStore.swift',
                             'ios/APIClient.swift', 'tests/APIClientTransportTests.swift', '-o', str(executable)],
-                           cwd=root, check=True, timeout=120)
+                           cwd=root, check=True, timeout=300)
+            # Compile before booting so first-boot migration does not compete with Swift.
+            if booted_here:
+                did_boot = True
+                subprocess.run(['xcrun', 'simctl', 'boot', device['udid']], check=True, timeout=180)
+            subprocess.run(['xcrun', 'simctl', 'bootstatus', device['udid'], '-b'], check=True, timeout=180)
             port = 0
             for phase in ['lost', 'recover']:
                 ready = directory / 'ready'
@@ -93,8 +96,8 @@ def run():
             assert sorted(records.values()) == ['recipe-1', 'recipe-2'], records
             print('Actual iOS client HTTP response-loss, process restart, replay and new-attempt checks passed')
     finally:
-        if booted_here:
-            subprocess.run(['xcrun', 'simctl', 'shutdown', device['udid']], check=True)
+        if did_boot:
+            subprocess.run(['xcrun', 'simctl', 'shutdown', device['udid']], check=True, timeout=60)
 
 
 if __name__ == '__main__':
