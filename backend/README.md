@@ -269,7 +269,7 @@ This guarantee is limited to one server process using its persistent data volume
 It does not provide cross-process locking or protection after data loss. Requests
 without a key retain the previous behavior and can award XP again on retry; the
 mobile retry-key integration is not included in this change. Recipe generation
-and Cook With This do not yet have idempotency receipts. Tests exercise concurrent
+does not yet have idempotency receipts. Tests exercise concurrent
 route calls, replay after another award, restart in a child process, conflicts,
 invalid keys and bounded receipt retention; they do not establish mobile or
 network-disconnect end-to-end behavior.
@@ -297,3 +297,27 @@ Malformed compressed data can still fail inside the isolated OCR child. These
 checks are not a hard memory quota; process deadlines and child concurrency
 limits remain necessary. Tests use controlled workers for admission checks and
 do not establish live OCR quality or peak memory usage.
+
+### Cook With This retries
+
+`POST /recipes/from-ingredients` accepts an optional `Idempotency-Key` with the
+same 1–128 ASCII letter/digit/`._:-` syntax as meal logging. Reuse the key and
+`user_id` after an uncertain response to replay the original recipes and progress.
+Use a new key for an intentionally new generation, including after editing
+groceries or preferences: a retained receipt replays before reading those values.
+A changed `user_id` with the same retained key returns 409. The existing shared
+Albert profile is still used; this is not multi-user isolation or authentication.
+
+The response receipt and +5 XP award are committed in one atomic JSON replacement.
+Concurrent completions recheck the receipt inside that synchronous mutation, so
+only one awards XP. Completed receipts bypass inference, but simultaneous requests
+can still perform duplicate inference before the first commits. Provider failures
+can be retried; this does not guarantee one provider invocation or billing charge.
+
+Receipts last 24 hours, with at most 100 per profile and 128 KiB per response.
+New keys receive 503 at capacity; existing keys still replay. Oversized responses
+receive 502 without awarding XP. Expired keys can create a new award. Requests
+without a key keep their previous behavior. These guarantees require one Node
+writer and retained storage; cross-process locking and mobile key persistence
+remain separate work. Tests cover concurrent completion and actual HTTP response
+loss followed by process restart using controlled inference, not live model E2E.
