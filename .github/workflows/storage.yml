@@ -21,3 +21,9 @@ jobs:
           done
       - name: Run isolated storage regressions
         run: npm test --prefix backend
+      - name: Exercise real OCR with local language data
+        timeout-minutes: 3
+        run: |
+          npm pack @tesseract.js-data/eng@1.0.0 --ignore-scripts --pack-destination "$RUNNER_TEMP"
+          tar -xOf "$RUNNER_TEMP/tesseract.js-data-eng-1.0.0.tgz" package/4.0.0_best_int/eng.traineddata.gz | gzip -d > "$RUNNER_TEMP/eng.traineddata"
+          OCR_ENGLISH_DATA="$RUNNER_TEMP/eng.traineddata" npm run test:ocr --prefix backend
