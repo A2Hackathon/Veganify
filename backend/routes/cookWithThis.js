@@ -23,10 +23,10 @@ router.post("/", async (req, res, next) => {
   if (req.aborted || res.destroyed) controller.abort();
   try {
     controller.signal.throwIfAborted();
-    const { user_id } = req.body;
+    const user_id = req.body?.user_id;
 
-    if (!user_id) {
-      return res.status(400).json({ error: "user_id is required to get groceries" });
+    if (typeof user_id !== "string" || !user_id.trim() || user_id.length > 128) {
+      return res.status(400).json({ error: "user_id must contain 1 to 128 characters" });
     }
 
     // ALWAYS use the single Albert user
