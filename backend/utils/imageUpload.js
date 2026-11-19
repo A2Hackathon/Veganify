@@ -4,7 +4,11 @@ export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_CONCURRENT_UPLOADS = 4;
 const parse = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 10, parts: 11, fieldSize: 8192, fieldNameSize: 100 },
+  limits: {
+    fileSize: MAX_IMAGE_BYTES, files: 1, fields: 10, parts: 11, fieldSize: 8192, fieldNameSize: 100,
+    // Scan forms use scalar fields; reject nested objects and sparse arrays before allocation.
+    fieldNestingDepth: 0, fieldArrayIndexLimit: 0,
+  },
 }).single('image');
 
 export function createImageUpload({maxConcurrent = MAX_CONCURRENT_UPLOADS} = {}) {

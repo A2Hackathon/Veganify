@@ -22,11 +22,13 @@ test('multipart limits and memory-backed image contract', async () => {
     const valid = await send(form(Buffer.alloc(MAX_IMAGE_BYTES)));
     assert.equal(valid.status, 200);
     assert.equal((await valid.json()).bytes, MAX_IMAGE_BYTES);
-    const cases = [form(), form(), form(), form()];
+    const cases = [form(), form(), form(), form(), form(), form()];
     cases[0].append('image', new Blob(['second']), 'other.png');
     cases[1].append('note', 'x'.repeat(8193));
     for (let i = 0; i < 11; i++) cases[2].append('field' + i, 'value');
     cases[3].append('unexpected', new Blob(['file']), 'other.png');
+    cases[4].append('userId[nested]', 'value');
+    cases[5].append('userId[1000000]', 'value');
     for (const [index, data] of cases.entries()) {
       assert.equal((await send(data)).status, index === 1 ? 413 : 400);
     }
