@@ -158,3 +158,42 @@ test('shared-user initialization retries preserve existing preferences and ident
   assert.deepEqual(JSON.parse(execFileSync(process.execPath, ['--input-type=module','-e',script], {encoding:'utf8'})), user);
   assert.equal(await storage.UserStorage.countDocuments(), 1);
 });
+
+test('generation receipts migrate legacy arrays and commit atomically with recipe batches', async t => {
+  const {storage, file, modulePath} = await fixture(t);
+  const recipes = storage.RecipeStorage;
+  const retry = {key: 'generation-1', fingerprint: 'a'.repeat(64)};
+  const original = await recipes.create({title: 'legacy'});
+  assert.ok(Array.isArray(JSON.parse(fs.readFileSync(file, 'utf8'))));
+  const before = fs.readFileSync(file, 'utf8');
+  const stub = t.mock.method(fs, 'renameSync', () => { throw new Error('receipt replacement failed'); });
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(recipes.createMany([{title: 'new'}], retry), /receipt replacement failed/);
+  } finally { stub.mock.restore(); syncBuiltinESMExports(); }
+  assert.equal(fs.readFileSync(file, 'utf8'), before, 'neither receipt nor recipe commits on failure');
+  assert.equal(await recipes.findGeneration(retry), null);
+  const batches = await Promise.all(Array.from({length: 20}, (_, i) => recipes.createMany([{title: 'candidate-' + i}], retry)));
+  for (const batch of batches) assert.deepEqual(batch, batches[0]);
+  assert.equal((await recipes.find({})).length, 2);
+  assert.equal((await recipes.findById(original._id)).title, 'legacy');
+  await recipes.create({title: 'ordinary save'});
+  assert.deepEqual(await recipes.findGeneration(retry), batches[0], 'ordinary save preserves receipts');
+  const script = `const {RecipeStorage:s} = await import(${JSON.stringify(pathToFileURL(modulePath).href)}); console.log(JSON.stringify(await s.findGeneration(${JSON.stringify(retry)})));`;
+  assert.deepEqual(JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], {encoding: 'utf8'})), batches[0]);
+  await assert.rejects(recipes.findGeneration({...retry, fingerprint: 'b'.repeat(64)}), e => e.status === 409);
+  await assert.rejects(recipes.createMany([{title: 'x'.repeat(128 * 1024)}], {...retry, key: 'large'}), e => e.status === 502);
+  assert.equal((await recipes.find({})).length, 3);
+  const state = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.equal(state.version, 1);
+  state.receipts = Array.from({length: 100}, (_, i) => ({...state.receipts[0], key: i ? 'capacity-' + i : retry.key}));
+  fs.writeFileSync(file, JSON.stringify(state));
+  assert.deepEqual(await recipes.findGeneration(retry), batches[0]);
+  await assert.rejects(recipes.findGeneration({...retry, key: 'overflow'}), e => e.status === 503);
+  await assert.rejects(recipes.createMany([{title: 'overflow'}], {...retry, key: 'overflow'}), e => e.status === 503);
+  state.receipts[99].created_ms = 0;
+  fs.writeFileSync(file, JSON.stringify(state));
+  await recipes.createMany([{title: 'after expiration'}], {...retry, key: 'overflow'});
+  assert.equal((await recipes.find({})).length, 4);
+  assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).receipts.length, 100);
+});

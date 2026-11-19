@@ -182,10 +182,41 @@ export const UserImpactStorage = {
   },
 };
 
+// Legacy recipe arrays remain readable. Keyed generation upgrades only this file.
+function readRecipeState() {
+  const data = JSON.parse(readFileSync(RECIPES_FILE, 'utf8'));
+  if (Array.isArray(data)) return {recipes: data, receipts: [], legacy: true};
+  if (!data || data.version !== 1 || !Array.isArray(data.recipes) || !Array.isArray(data.receipts) ||
+      data.receipts.length > 100 || data.receipts.some(r => !r || typeof r.key !== 'string' ||
+        typeof r.fingerprint !== 'string' || !Number.isSafeInteger(r.created_ms) || !Array.isArray(r.records))) {
+    throw new Error('Invalid recipe storage');
+  }
+  return data;
+}
+
+function retryFailure(status, message) {
+  return Object.assign(new Error(message), {code: 'RECIPE_RETRY', status});
+}
+
+function generationReceipt(state, retry) {
+  if (!retry || typeof retry.key !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/.test(retry.key) ||
+      typeof retry.fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(retry.fingerprint)) {
+    throw retryFailure(400, 'Invalid generation retry identity');
+  }
+  state.receipts = state.receipts.filter(r => Date.now() - r.created_ms < 24 * 60 * 60 * 1000);
+  const previous = state.receipts.find(r => r.key === retry.key);
+  if (previous && previous.fingerprint !== retry.fingerprint) throw retryFailure(409, 'Idempotency key already used for different input');
+  if (!previous && state.receipts.length >= 100) throw retryFailure(503, 'Generation retry receipt capacity reached; retry later with the same key');
+  return previous?.records;
+}
+
 // Recipe storage operations
 export const RecipeStorage = {
+  async findGeneration(retry) {
+    return generationReceipt(readRecipeState(), retry) ?? null;
+  },
   async find(query) {
-    const recipes = readJSON(RECIPES_FILE);
+    const {recipes} = readRecipeState();
     if (!query || Object.keys(query).length === 0) {
       return recipes;
     }
@@ -207,12 +238,16 @@ export const RecipeStorage = {
     return recipe;
   },
 
-  async createMany(batch) {
+  async createMany(batch, retry) {
     if (!Array.isArray(batch) || !batch.length || batch.length > 3 ||
         batch.some(item => !item || typeof item !== "object" || Array.isArray(item))) {
       throw new Error("Expected one to three recipe records");
     }
-    const recipes = readJSON(RECIPES_FILE);
+    const state = readRecipeState();
+    if (retry) {
+      const previous = generationReceipt(state, retry);
+      if (previous) return previous;
+    }
     const timestamp = new Date().toISOString();
     const created = batch.map(recipeData => ({
       ...recipeData,
@@ -221,13 +256,20 @@ export const RecipeStorage = {
       createdAt: timestamp,
       updatedAt: timestamp,
     }));
-    // One file replacement commits the entire batch; no per-recipe partial saves.
-    writeJSON(RECIPES_FILE, [...recipes, ...created]);
+    if (retry) {
+      if (Buffer.byteLength(JSON.stringify(created), 'utf8') > 128 * 1024) {
+        throw retryFailure(502, 'Generated recipes exceed retry storage limit');
+      }
+      state.receipts.push({...retry, created_ms: Date.now(), records: created});
+    }
+    // No await separates receipt recheck, batch construction and atomic publication.
+    const recipes = [...state.recipes, ...created];
+    writeJSON(RECIPES_FILE, state.legacy && !retry ? recipes : {version: 1, recipes, receipts: state.receipts});
     return created;
   },
 
   async findById(id) {
-    const recipes = readJSON(RECIPES_FILE);
+    const {recipes} = readRecipeState();
     return recipes.find(r => r._id === id || r.id === id) || null;
   },
 };

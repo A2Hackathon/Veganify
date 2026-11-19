@@ -238,7 +238,7 @@ Dietary checks preserve every requested ingredient. Missing or invalid classific
 
 Recipe generation requires the complete requested batch (at most three recipes), with bounded titles, tags, durations, ingredient fields and nonempty steps. The whole batch is validated before persistence or XP updates. Unsupported model fields, including IDs and image URLs, are discarded. Failed inference raises an error instead of returning an empty successful batch. Controlled parser tests and an isolated server test verify these contracts and no recipe/XP writes on provider-configuration failure. These checks do not establish dietary accuracy, ingredient completeness, atomic multi-recipe persistence, or real model quality.
 
-Generated recipe batches now use one atomic replacement of `recipes.json`, so a write/rename failure cannot save only the first recipes in the batch. Storage tests inject replacement failure and verify the previous file remains unchanged, then verify the successful batch through a fresh Node process. This is single-process, single-file atomicity; it does not provide cross-file transactions, multiprocess coordination, directory-fsync power-loss durability, or request retry idempotency.
+Generated recipe batches now use one atomic replacement of `recipes.json`, so a write/rename failure cannot save only the first recipes in the batch. Storage tests inject replacement failure and verify the previous file remains unchanged, then verify the successful batch through a fresh Node process. This is single-process, single-file atomicity; it does not provide cross-file transactions, multiprocess coordination, directory-fsync power-loss durability, or request retry idempotency for unkeyed requests.
 
 ### Shared demo access
 All application routes require `Authorization: Bearer <VEGANIFY_API_TOKEN>` before body parsing. Set `VEGANIFY_API_TOKEN` locally to 32–128 random URL-safe characters (for example, generate locally with `openssl rand -hex 32`); keep the value out of source control and logs. Missing/invalid server configuration returns 503, missing/wrong credentials return 401. Only the minimal `GET /` health response remains public. The server binds to `127.0.0.1` by default; a remote or physical-device demo needs an operator-configured HTTPS reverse proxy. No deployment or secret provisioning is included.
@@ -269,7 +269,7 @@ This guarantee is limited to one server process using its persistent data volume
 It does not provide cross-process locking or protection after data loss. Requests
 without a key retain the previous behavior and can award XP again on retry; the
 mobile retry-key integration is not included in this change. Recipe generation
-does not yet have idempotency receipts. Tests exercise concurrent
+retry behavior is documented below. Tests exercise concurrent
 route calls, replay after another award, restart in a child process, conflicts,
 invalid keys and bounded receipt retention; they do not establish mobile or
 network-disconnect end-to-end behavior.
@@ -321,3 +321,28 @@ without a key keep their previous behavior. These guarantees require one Node
 writer and retained storage; cross-process locking and mobile key persistence
 remain separate work. Tests cover concurrent completion and actual HTTP response
 loss followed by process restart using controlled inference, not live model E2E.
+
+### Recipe generation retries and storage format
+
+`POST /recipes/generate` accepts an optional `Idempotency-Key` using the same
+syntax as meal logging. Reuse the key with the same normalized `userId`,
+`ingredients` and `prompt` to replay the original recipe IDs and response.
+A retained key with different normalized input returns 409. Completed receipts
+bypass profile/grocery reads and inference. Use a new key when intentionally
+regenerating after stored grocery or preference changes. Concurrent requests may
+still perform duplicate inference before one batch commits.
+
+Recipe records and their replay snapshot are published in one atomic replacement
+of `recipes.json`; a failed replacement commits neither. The first keyed save
+upgrades a legacy array to `{version: 1, recipes: [...], receipts: [...]}`. Existing
+records remain intact, and ordinary saves preserve receipts. Older server versions
+cannot read the new envelope: retain a backup before upgrading and account for
+this format change when planning rollback. No separate receipt file is used.
+
+Receipts are retained for 24 hours with a global limit of 100 and a maximum stored
+batch snapshot of 128 KiB. New keys return 503 at capacity; oversized batches
+return 502 without saving recipes. Expired keys may produce another batch.
+Unkeyed requests retain their previous behavior. The guarantees require a single
+Node writer and retained storage; they do not provide cross-process coordination
+or guarantee one model invocation. The current iOS caller does not yet persist
+retry keys. HTTP restart tests use controlled inference, not a live model.
