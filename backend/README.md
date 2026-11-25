@@ -346,3 +346,29 @@ Unkeyed requests retain their previous behavior. The guarantees require a single
 Node writer and retained storage; they do not provide cross-process coordination
 or guarantee one model invocation. The current iOS caller does not yet persist
 retry keys. HTTP restart tests use controlled inference, not a live model.
+
+### Real OCR smoke check
+
+The ordinary test suite uses controlled workers to test admission and lifecycle
+failures. `npm run test:ocr` additionally runs the real Tesseract worker against
+`tests/fixtures/ocr-text.png`, a generated 600×150 white image with the text
+“RICE AND BEANS” rendered using DejaVu Sans. It checks decoded text, a truncated
+PNG reaching the decoder, recovery after that failure, cancellation after child
+creation, recovery after cancellation, and a one-millisecond startup deadline.
+It does not measure peak memory, throughput or accuracy on receipts/menus.
+
+From the repository root, provision language data separately (no model is bundled):
+
+```sh
+mkdir -p /tmp/veganify-ocr-data
+npm pack @tesseract.js-data/eng@1.0.0 --ignore-scripts --pack-destination /tmp/veganify-ocr-data
+tar -xOf /tmp/veganify-ocr-data/tesseract.js-data-eng-1.0.0.tgz package/4.0.0_best_int/eng.traineddata.gz | gzip -d > /tmp/veganify-ocr-data/eng.traineddata
+OCR_ENGLISH_DATA=/tmp/veganify-ocr-data/eng.traineddata npm run test:ocr --prefix backend
+```
+
+The smoke runner copies the supplied uncompressed model to a disposable working
+directory, uses Tesseract's local cache, and removes it afterward. CI provisions
+the pinned data package through npm; its download requires registry access, but
+the decoder run does not need the default language-data CDN. Production OCR
+configuration is unchanged. This check is decoder/service integration, not an
+uploaded-photo-to-model or browser workflow test.

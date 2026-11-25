@@ -6,7 +6,8 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test:mongodb": "node test-mongodb.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "test:ocr": "node scripts/ocr-smoke.js"
   },
   "dependencies": {
     "cors": "2.8.5",
