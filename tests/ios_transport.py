@@ -9,10 +9,10 @@ import json
 from pathlib import Path
 import platform
 import socket
+import selectors
 import subprocess
 import sys
 import tempfile
-import time
 
 
 def serve(directory, port, drop):
@@ -45,7 +45,7 @@ def serve(directory, port, drop):
 
     http.server.HTTPServer.allow_reuse_address = True
     with http.server.HTTPServer(('127.0.0.1', port), Handler) as server:
-        (directory / 'ready').write_text(str(server.server_port))
+        print(server.server_port, flush=True)
         server.serve_forever()
 
 
@@ -76,22 +76,24 @@ def run():
             subprocess.run(['xcrun', 'simctl', 'bootstatus', device['udid'], '-b'], check=True, timeout=180)
             port = 0
             for phase in ['lost', 'recover']:
-                ready = directory / 'ready'
-                ready.unlink(missing_ok=True)
                 peer = subprocess.Popen([sys.executable, __file__, '--serve', str(directory),
-                                         '--port', str(port)] + (['--drop'] if phase == 'lost' else []))
+                                         '--port', str(port)] + (['--drop'] if phase == 'lost' else []),
+                                        stdout=subprocess.PIPE, text=True)
                 try:
-                    deadline = time.monotonic() + 10
-                    while not ready.exists():
-                        assert peer.poll() is None and time.monotonic() < deadline, 'HTTP peer failed to start'
-                        time.sleep(0.05)
-                    port = int(ready.read_text())
+                    # Readiness is a pipe event, not a racy file/deadline poll after boot.
+                    with selectors.DefaultSelector() as selector:
+                        selector.register(peer.stdout, selectors.EVENT_READ)
+                        assert selector.select(timeout=60), 'HTTP peer startup timed out'
+                        line = peer.stdout.readline()
+                    assert line.strip().isdigit(), f'HTTP peer exited before readiness: {peer.poll()}'
+                    port = int(line)
                     subprocess.run(['xcrun', 'simctl', 'spawn', device['udid'], str(executable),
                                     f'http://127.0.0.1:{port}', str(directory / 'client'), phase],
                                    check=True, timeout=90)
                 finally:
                     peer.terminate()
                     peer.wait(timeout=10)
+                    peer.stdout.close()
             records = json.loads((directory / 'receipts.json').read_text())
             assert sorted(records.values()) == ['recipe-1', 'recipe-2'], records
             print('Actual iOS client HTTP response-loss, process restart, replay and new-attempt checks passed')
